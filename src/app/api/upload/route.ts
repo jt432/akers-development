@@ -12,6 +12,14 @@ const ALLOWED_TYPES = [
 ];
 const ALLOWED_EXTENSIONS = ['pdf', 'jpg', 'jpeg', 'png', 'docx'];
 
+const VALID_CONSULTANTS = [
+  'Jon Tyler Akers',
+  'Tristan Gardner',
+  'Jacob Wilson',
+  'Dylan Scott',
+  'Chapman Suggs',
+];
+
 // Rate limiting
 const submissions = new Map<string, number>();
 function isRateLimited(ip: string): boolean {
@@ -23,6 +31,28 @@ function isRateLimited(ip: string): boolean {
     if (now - time > 600_000) submissions.delete(key);
   }
   return false;
+}
+
+// Log consultant selection to Vercel Blob for tracking
+async function logConsultantSelection(consultant: string, clientName: string, projectType: string) {
+  try {
+    const entry = {
+      consultant,
+      clientName,
+      projectType,
+      timestamp: new Date().toISOString(),
+    };
+
+    // Store each submission as a separate JSON file in blob storage
+    const filename = `consultant-log/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.json`;
+    await put(filename, JSON.stringify(entry), {
+      access: 'public',
+      addRandomSuffix: false,
+    });
+  } catch (err) {
+    // Don't fail the submission if logging fails
+    console.error('Failed to log consultant selection:', err);
+  }
 }
 
 export async function POST(req: NextRequest) {
@@ -45,9 +75,10 @@ export async function POST(req: NextRequest) {
     const projectType = formData.get('projectType') as string;
     const squareFootage = formData.get('squareFootage') as string;
     const description = formData.get('description') as string;
+    const consultant = formData.get('consultant') as string;
 
     // Validation
-    if (!name || !email || !location || !projectType || !description) {
+    if (!name || !email || !location || !projectType || !description || !consultant) {
       return NextResponse.json(
         { error: 'Please fill in all required fields.' },
         { status: 400 }
@@ -56,6 +87,12 @@ export async function POST(req: NextRequest) {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return NextResponse.json(
         { error: 'Please provide a valid email address.' },
+        { status: 400 }
+      );
+    }
+    if (!VALID_CONSULTANTS.includes(consultant)) {
+      return NextResponse.json(
+        { error: 'Please select a valid consultant.' },
         { status: 400 }
       );
     }
@@ -108,6 +145,9 @@ export async function POST(req: NextRequest) {
       });
     }
 
+    // Log the consultant selection for tracking
+    await logConsultantSelection(consultant, name, projectType);
+
     // Build file links HTML
     const fileLinksHtml = uploadedFiles.length > 0
       ? uploadedFiles.map(f =>
@@ -120,7 +160,7 @@ export async function POST(req: NextRequest) {
 
     // Send notification email
     await sendNotificationEmail({
-      subject: `New Plan Upload from ${name} — ${projectType}`,
+      subject: `New Plan Upload from ${name} — Consultant: ${consultant}`,
       replyTo: email,
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
@@ -128,6 +168,16 @@ export async function POST(req: NextRequest) {
             <h1 style="margin: 0; font-size: 20px;">New Plan Upload Submission</h1>
             <p style="margin: 8px 0 0; color: #C4B5A0; font-size: 14px;">Preliminary Cost Review Request</p>
           </div>
+
+          <div style="background: #B8976A; color: white; padding: 16px 24px;">
+            <table style="width: 100%; border-collapse: collapse;">
+              <tr>
+                <td style="font-weight: bold; font-size: 14px; vertical-align: middle;">ASSIGNED CONSULTANT:</td>
+                <td style="font-size: 18px; font-weight: bold; text-align: right; vertical-align: middle;">${consultant}</td>
+              </tr>
+            </table>
+          </div>
+
           <div style="padding: 24px; border: 1px solid #eee;">
             <h2 style="font-size: 16px; margin: 0 0 16px; color: #2D2D2D;">Contact Information</h2>
             <table style="width: 100%; border-collapse: collapse;">

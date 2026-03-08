@@ -13,6 +13,14 @@ const projectTypes = [
   'Other',
 ];
 
+const consultants = [
+  { name: 'Jon Tyler Akers', title: 'President' },
+  { name: 'Tristan Gardner', title: 'Sr. Development Consultant' },
+  { name: 'Jacob Wilson', title: 'Jr. Development Consultant' },
+  { name: 'Dylan Scott', title: 'Jr. Development Consultant' },
+  { name: 'Chapman Suggs', title: 'Jr. Development Consultant' },
+];
+
 export default function UploadPlansPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
@@ -36,6 +44,7 @@ export default function UploadPlansPage() {
     formData.append('projectType', (form.elements.namedItem('projectType') as HTMLSelectElement).value);
     formData.append('squareFootage', (form.elements.namedItem('squareFootage') as HTMLInputElement).value);
     formData.append('description', (form.elements.namedItem('description') as HTMLTextAreaElement).value);
+    formData.append('consultant', (form.elements.namedItem('consultant') as HTMLSelectElement).value);
 
     // Append files
     filesRef.current.forEach((file) => {
@@ -169,6 +178,22 @@ export default function UploadPlansPage() {
                   placeholder="Describe your project — what you want to build, the stage you're at, any specific questions you have..."
                 />
               </div>
+            </div>
+
+            {/* Consultant Selection */}
+            <div>
+              <h3 className="heading-sm mb-6">Select Your Consultant</h3>
+              <p className="body-md text-sm mb-4">
+                Choose which development consultant you&apos;d like to work with on your project.
+              </p>
+              <select id="consultant" name="consultant" required className="input-field">
+                <option value="">Select a consultant</option>
+                {consultants.map((c) => (
+                  <option key={c.name} value={c.name}>
+                    {c.name} — {c.title}
+                  </option>
+                ))}
+              </select>
             </div>
 
             {/* File Upload */}
