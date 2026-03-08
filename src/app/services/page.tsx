@@ -45,7 +45,7 @@ export default function ServicesPage() {
     <>
       <PageHero
         label="Our Services"
-        title="Development Consulting & Project Leadership"
+        title="Development Consulting & Project Management"
         description="We guide and coordinate projects rather than acting as a traditional general contractor. The result: cost transparency, strategic planning, and developer-level insight."
       />
 

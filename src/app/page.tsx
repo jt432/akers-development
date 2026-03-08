@@ -18,7 +18,7 @@ export default function HomePage() {
 
         <div className="relative z-10 section-padding container-wide">
           <span className="inline-block text-xs tracking-[0.25em] uppercase font-semibold text-brand-sand mb-6">
-            Development Consulting &middot; Project Leadership
+            Development Consulting &middot; Project Management
           </span>
           <h1 className="heading-xl text-white max-w-3xl">
             Helping People Become Developers
@@ -233,7 +233,7 @@ export default function HomePage() {
             {[
               {
                 name: 'Akers Development',
-                role: 'Development consulting, planning, and project leadership.',
+                role: 'Development consulting, planning, and project management.',
                 link: '/',
                 linkLabel: 'You\'re Here',
               },

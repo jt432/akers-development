@@ -54,7 +54,7 @@ export default function OurCompaniesPage() {
               <h3 className="heading-lg mt-2 mb-4">Akers Development</h3>
               <p className="body-md mb-4">
                 The hub of the ecosystem. Akers Development provides development consulting,
-                project planning, cost strategy, and project leadership. We guide clients
+                project planning, cost strategy, and project management. We guide clients
                 through the entire development process — from evaluating an idea to
                 coordinating the resources needed to build it.
               </p>
@@ -71,7 +71,7 @@ export default function OurCompaniesPage() {
                   Cost Planning
                 </span>
                 <span className="text-xs px-4 py-2 bg-brand-charcoal text-white tracking-wide">
-                  Project Leadership
+                  Project Management
                 </span>
               </div>
             </div>
@@ -197,7 +197,7 @@ export default function OurCompaniesPage() {
             <div className="border border-white/10 p-8">
               <span className="text-brand-sand text-sm font-semibold tracking-widest uppercase">Phase 1</span>
               <h3 className="text-xl font-semibold text-white mt-3 mb-2">Akers Development</h3>
-              <p className="text-gray-300 text-sm">Planning, strategy, and project leadership.</p>
+              <p className="text-gray-300 text-sm">Planning, strategy, and project management.</p>
             </div>
             <div className="border border-white/10 p-8">
               <span className="text-brand-sand text-sm font-semibold tracking-widest uppercase">Phase 2</span>

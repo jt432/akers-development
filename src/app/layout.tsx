@@ -5,7 +5,7 @@ import Footer from '@/components/Footer';
 
 export const metadata: Metadata = {
   title: {
-    default: 'Akers Development — Development Consulting & Project Leadership',
+    default: 'Akers Development — Development Consulting & Project Management',
     template: '%s | Akers Development',
   },
   description:
@@ -24,7 +24,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'Akers Development — Helping People Become Developers',
     description:
-      'Development consulting and project leadership for residential building and development projects.',
+      'Development consulting and project management for residential building and development projects.',
     url: 'https://akers-development.com',
     siteName: 'Akers Development',
     locale: 'en_US',
@@ -47,7 +47,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               '@type': 'ProfessionalService',
               name: 'Akers Development',
               description:
-                'Development consulting and project leadership company helping people plan and execute residential building and development projects.',
+                'Development consulting and project management company helping people plan and execute residential building and development projects.',
               url: 'https://akers-development.com',
               email: 'jt@akers-development.com',
               founder: {

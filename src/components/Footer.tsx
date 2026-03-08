@@ -42,7 +42,7 @@ export default function Footer() {
               </div>
             </div>
             <p className="text-gray-400 text-sm leading-relaxed">
-              Development consulting and project leadership. Helping people become developers.
+              Development consulting and project management. Helping people become developers.
             </p>
           </div>
 
@@ -113,7 +113,7 @@ export default function Footer() {
             &copy; {new Date().getFullYear()} Akers Development. All rights reserved.
           </p>
           <p className="text-gray-500 text-sm mt-2 md:mt-0">
-            Development Consulting &middot; Project Leadership &middot; Cost Strategy
+            Development Consulting &middot; Project Management &middot; Cost Strategy
           </p>
         </div>
       </div>

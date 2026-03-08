@@ -14,7 +14,7 @@ export default function AboutPage() {
     <>
       <PageHero
         label="About Us"
-        title="Development Consulting & Project Leadership"
+        title="Development Consulting & Project Management"
         description="We help people who want to build or develop property bridge the gap between their vision and execution."
       />
 
