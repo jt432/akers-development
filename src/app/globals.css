@@ -1,0 +1,78 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+  }
+  body {
+    @apply bg-brand-white text-brand-charcoal;
+  }
+}
+
+@layer components {
+  .section-padding {
+    @apply px-6 py-20 md:px-12 lg:px-20 xl:px-32;
+  }
+  .section-padding-sm {
+    @apply px-6 py-12 md:px-12 lg:px-20 xl:px-32;
+  }
+  .container-narrow {
+    @apply max-w-5xl mx-auto;
+  }
+  .container-wide {
+    @apply max-w-7xl mx-auto;
+  }
+  .heading-xl {
+    @apply text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight leading-tight;
+  }
+  .heading-lg {
+    @apply text-3xl md:text-4xl font-bold tracking-tight;
+  }
+  .heading-md {
+    @apply text-2xl md:text-3xl font-semibold tracking-tight;
+  }
+  .heading-sm {
+    @apply text-xl md:text-2xl font-semibold;
+  }
+  .body-lg {
+    @apply text-lg md:text-xl text-brand-slate leading-relaxed;
+  }
+  .body-md {
+    @apply text-base md:text-lg text-brand-slate leading-relaxed;
+  }
+  .btn-primary {
+    @apply inline-flex items-center px-8 py-4 bg-brand-charcoal text-white font-medium
+           tracking-wide uppercase text-sm transition-all duration-300
+           hover:bg-brand-dark hover:shadow-lg;
+  }
+  .btn-secondary {
+    @apply inline-flex items-center px-8 py-4 border-2 border-brand-charcoal text-brand-charcoal
+           font-medium tracking-wide uppercase text-sm transition-all duration-300
+           hover:bg-brand-charcoal hover:text-white;
+  }
+  .btn-accent {
+    @apply inline-flex items-center px-8 py-4 bg-brand-accent text-white font-medium
+           tracking-wide uppercase text-sm transition-all duration-300
+           hover:bg-opacity-90 hover:shadow-lg;
+  }
+  .input-field {
+    @apply w-full px-4 py-3 bg-white border border-gray-200 text-brand-charcoal
+           placeholder-gray-400 focus:outline-none focus:border-brand-charcoal
+           focus:ring-1 focus:ring-brand-charcoal transition-colors;
+  }
+  .card {
+    @apply bg-white border border-gray-100 p-8 transition-all duration-300
+           hover:shadow-md hover:border-gray-200;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: #F5F0EB; }
+::-webkit-scrollbar-thumb { background: #8B7D6B; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #6B6156; }
