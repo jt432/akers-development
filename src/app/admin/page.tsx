@@ -62,7 +62,7 @@ export default function AdminDashboard() {
   };
 
   const consultantTitle = (name: string) => {
-    if (name === 'Jon Tyler Akers') return 'President';
+    if (name === 'Jon Tyler Akers') return 'Sr. Development Consultant & President';
     if (name === 'Tristan Gardner') return 'Sr. Development Consultant';
     return 'Jr. Development Consultant';
   };

@@ -14,7 +14,7 @@ const projectTypes = [
 ];
 
 const consultants = [
-  { name: 'Jon Tyler Akers', title: 'President' },
+  { name: 'Jon Tyler Akers', title: 'Sr. Development Consultant & President' },
   { name: 'Tristan Gardner', title: 'Sr. Development Consultant' },
   { name: 'Jacob Wilson', title: 'Jr. Development Consultant' },
   { name: 'Dylan Scott', title: 'Jr. Development Consultant' },
