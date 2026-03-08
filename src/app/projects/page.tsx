@@ -14,7 +14,7 @@ const projects = [
     type: 'Residential Development',
     description:
       'A multi-phase residential development project featuring thoughtfully planned home sites, infrastructure coordination, and cost-efficient build strategies. Akers Development provided full development consulting from land planning through construction coordination.',
-    image: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800&q=80',
+    image: 'https://images.unsplash.com/photo-1504567961542-e24d9439a724?w=800&q=80',
     details: ['Development Planning', 'Cost Strategy', 'Builder Coordination', 'Infrastructure'],
   },
   {
