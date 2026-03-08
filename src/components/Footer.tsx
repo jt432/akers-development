@@ -28,12 +28,17 @@ export default function Footer() {
           {/* Brand */}
           <div>
             <div className="flex items-center space-x-3 mb-6">
-              <div className="w-10 h-10 bg-white flex items-center justify-center">
-                <span className="text-brand-dark font-bold text-lg">A</span>
-              </div>
+              <svg viewBox="0 0 56 68" width="32" height="40" xmlns="http://www.w3.org/2000/svg">
+                <rect x="2" y="4" width="48" height="3" fill="#FFFFFF" rx="0.5"/>
+                <rect x="6" y="7" width="6" height="44" fill="#FFFFFF"/>
+                <rect x="22" y="7" width="6" height="44" fill="#B8976A"/>
+                <rect x="38" y="7" width="6" height="44" fill="#FFFFFF"/>
+                <rect x="2" y="51" width="48" height="3" fill="#FFFFFF" rx="0.5"/>
+                <rect x="6" y="54" width="38" height="1.5" fill="#B8976A"/>
+              </svg>
               <div className="leading-tight">
-                <span className="block text-white font-bold text-lg tracking-tight">Akers</span>
-                <span className="block text-gray-400 text-xs tracking-widest uppercase">Development</span>
+                <span className="block font-serif text-white text-lg tracking-[0.15em]">AKERS</span>
+                <span className="block font-serif text-gray-400 text-[10px] tracking-[0.25em]">DEVELOPMENT</span>
               </div>
             </div>
             <p className="text-gray-400 text-sm leading-relaxed">

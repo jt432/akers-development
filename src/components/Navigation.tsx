@@ -23,15 +23,20 @@ export default function Navigation() {
         <div className="flex items-center justify-between h-20">
           {/* Logo */}
           <Link href="/" className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-brand-charcoal flex items-center justify-center">
-              <span className="text-white font-bold text-lg">A</span>
-            </div>
+            <svg viewBox="0 0 56 68" width="32" height="40" xmlns="http://www.w3.org/2000/svg">
+              <rect x="2" y="4" width="48" height="3" fill="#1A1A1A" rx="0.5"/>
+              <rect x="6" y="7" width="6" height="44" fill="#1A1A1A"/>
+              <rect x="22" y="7" width="6" height="44" fill="#B8976A"/>
+              <rect x="38" y="7" width="6" height="44" fill="#1A1A1A"/>
+              <rect x="2" y="51" width="48" height="3" fill="#1A1A1A" rx="0.5"/>
+              <rect x="6" y="54" width="38" height="1.5" fill="#B8976A"/>
+            </svg>
             <div className="leading-tight">
-              <span className="block text-brand-charcoal font-bold text-lg tracking-tight">
-                Akers
+              <span className="block font-serif text-brand-charcoal text-lg tracking-[0.15em]">
+                AKERS
               </span>
-              <span className="block text-brand-stone text-xs tracking-widest uppercase">
-                Development
+              <span className="block font-serif text-brand-stone text-[10px] tracking-[0.25em]">
+                DEVELOPMENT
               </span>
             </div>
           </Link>
