@@ -40,8 +40,7 @@ export default function HomePage() {
 
       {/* ─── Who We Are ─── */}
       <section className="section-padding bg-white">
-        <div className="container-wide grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-          <div>
+        <div className="container-narrow">
             <SectionHeading
               label="Who We Are"
               title="Development Consulting, Not General Contracting"
@@ -56,20 +55,6 @@ export default function HomePage() {
             <Link href="/about" className="btn-primary mt-8">
               Learn More About Us
             </Link>
-          </div>
-          <div className="relative">
-            <div
-              className="aspect-[4/3] bg-cover bg-center"
-              style={{
-                backgroundImage:
-                  "url('https://images.unsplash.com/photo-1541888946425-d81bb19240f5?w=800&q=80')",
-              }}
-            />
-            <div className="absolute -bottom-6 -left-6 bg-brand-charcoal text-white p-6">
-              <p className="text-3xl font-bold">15+</p>
-              <p className="text-sm text-gray-300 mt-1">Years of Development Experience</p>
-            </div>
-          </div>
         </div>
       </section>
 
@@ -132,32 +117,27 @@ export default function HomePage() {
               {
                 title: 'Cypress Lake Development',
                 type: 'Residential Development',
-                image: 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=600&q=80',
+                desc: 'Multi-lot residential development project including land planning, cost strategy, and construction coordination.',
               },
               {
                 title: 'Custom Residential Build',
                 type: 'Build Consulting',
-                image: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=600&q=80',
+                desc: 'Full development consulting for a custom home build — from initial planning and budgeting through project completion.',
               },
               {
                 title: 'Land Development Project',
                 type: 'Land Planning',
-                image: 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?w=600&q=80',
+                desc: 'Land evaluation, feasibility analysis, and development planning for a residential land development opportunity.',
               },
             ].map((project) => (
-              <Link href="/projects" key={project.title} className="group block">
-                <div
-                  className="aspect-[4/3] bg-cover bg-center transition-transform duration-500 group-hover:scale-[1.02]"
-                  style={{ backgroundImage: `url('${project.image}')` }}
-                />
-                <div className="mt-4">
-                  <span className="text-xs tracking-widest uppercase text-brand-stone font-medium">
-                    {project.type}
-                  </span>
-                  <h3 className="heading-sm mt-1 group-hover:text-brand-accent transition-colors">
-                    {project.title}
-                  </h3>
-                </div>
+              <Link href="/projects" key={project.title} className="card group block">
+                <span className="text-xs tracking-widest uppercase text-brand-stone font-medium">
+                  {project.type}
+                </span>
+                <h3 className="heading-sm mt-2 mb-3 group-hover:text-brand-accent transition-colors">
+                  {project.title}
+                </h3>
+                <p className="body-md text-sm">{project.desc}</p>
               </Link>
             ))}
           </div>
