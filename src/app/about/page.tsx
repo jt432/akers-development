@@ -20,8 +20,7 @@ export default function AboutPage() {
 
       {/* Founder */}
       <section className="section-padding bg-white">
-        <div className="container-wide grid grid-cols-1 lg:grid-cols-2 gap-16 items-start">
-          <div>
+        <div className="container-narrow">
             <SectionHeading
               label="Our Founder"
               title="Jon Tyler Akers"
@@ -48,16 +47,6 @@ export default function AboutPage() {
                 need to move forward with confidence.
               </p>
             </div>
-          </div>
-          <div className="relative">
-            <div
-              className="aspect-[3/4] bg-cover bg-center bg-gray-200"
-              style={{
-                backgroundImage:
-                  "url('https://images.unsplash.com/photo-1560250097-0b93528c311a?w=600&q=80')",
-              }}
-            />
-          </div>
         </div>
       </section>
 
