@@ -28,11 +28,11 @@ export default function HomePage() {
             ideas into profitable development projects.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 mt-10">
-            <Link href="/upload-plans" className="btn-accent">
-              Upload Your Plans
+            <Link href="/estimate" className="btn-accent">
+              Get a Cost Estimate
             </Link>
-            <Link href="/services" className="btn-secondary border-white text-white hover:bg-white hover:text-brand-dark">
-              How We Work
+            <Link href="/upload-plans" className="btn-secondary border-white text-white hover:bg-white hover:text-brand-dark">
+              Upload Your Plans
             </Link>
           </div>
         </div>
