@@ -166,44 +166,9 @@ export default function UploadPlansPage() {
     }
   };
 
-  // ── Try analyzing uploaded PDFs ──
-  const handleAnalyzePlans = async () => {
-    setAnalyzing(true);
-    setEstimateError('');
-
-    try {
-      const hasPdf = filesRef.current.some(f => f.name.toLowerCase().endsWith('.pdf'));
-
-      if (!hasPdf) {
-        // No PDFs, go straight to manual form
-        setShowSpecsForm(true);
-        setAnalyzing(false);
-        return;
-      }
-
-      // Try PDF analysis first
-      const formData = new FormData();
-      filesRef.current.forEach(file => formData.append('files', file));
-      formData.append('projectName', specs.projectName);
-
-      const res = await fetch('/api/analyze-plans', { method: 'POST', body: formData });
-      const data = await res.json();
-
-      if (!res.ok) throw new Error(data.error || 'Analysis failed');
-
-      if (data.needsManualInput) {
-        // Image-based PDFs — show the specs form
-        setShowSpecsForm(true);
-      } else if (data.estimate) {
-        // Auto-extracted — show the estimate directly
-        setEstimate(data.estimate);
-      }
-    } catch (err: unknown) {
-      // On any error, fall back to manual specs form
-      setShowSpecsForm(true);
-    } finally {
-      setAnalyzing(false);
-    }
+  // ── Show the specs form for cost estimate ──
+  const handleAnalyzePlans = () => {
+    setShowSpecsForm(true);
   };
 
   // ── Generate estimate from manual specs ──
