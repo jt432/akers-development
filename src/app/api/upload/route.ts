@@ -2,6 +2,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import { put } from '@vercel/blob';
 import { sendNotificationEmail } from '@/lib/email';
 
+const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25MB
+const MAX_FILES = 10;
+const ALLOWED_TYPES = [
+  'application/pdf',
+  'image/jpeg',
+  'image/png',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+];
+const ALLOWED_EXTENSIONS = ['pdf', 'jpg', 'jpeg', 'png', 'docx'];
+
 const VALID_CONSULTANTS = [
   'Jon Tyler Akers',
   'Tristan Gardner',
@@ -15,7 +25,7 @@ const submissions = new Map<string, number>();
 function isRateLimited(ip: string): boolean {
   const now = Date.now();
   const last = submissions.get(ip) || 0;
-  if (now - last < 120_000) return true;
+  if (now - last < 120_000) return true; // 2 min cooldown for uploads
   submissions.set(ip, now);
   for (const [key, time] of submissions) {
     if (now - time > 600_000) submissions.delete(key);
@@ -32,12 +42,15 @@ async function logConsultantSelection(consultant: string, clientName: string, pr
       projectType,
       timestamp: new Date().toISOString(),
     };
+
+    // Store each submission as a separate JSON file in blob storage
     const filename = `consultant-log/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.json`;
     await put(filename, JSON.stringify(entry), {
       access: 'public',
       addRandomSuffix: false,
     });
   } catch (err) {
+    // Don't fail the submission if logging fails
     console.error('Failed to log consultant selection:', err);
   }
 }
@@ -52,10 +65,17 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Now receives JSON with form fields + blob URLs (no raw files)
-    const body = await req.json();
+    const formData = await req.formData();
 
-    const { name, email, phone, location, projectType, squareFootage, description, consultant, files } = body;
+    // Extract fields
+    const name = formData.get('name') as string;
+    const email = formData.get('email') as string;
+    const phone = formData.get('phone') as string;
+    const location = formData.get('location') as string;
+    const projectType = formData.get('projectType') as string;
+    const squareFootage = formData.get('squareFootage') as string;
+    const description = formData.get('description') as string;
+    const consultant = formData.get('consultant') as string;
 
     // Validation
     if (!name || !email || !location || !projectType || !description || !consultant) {
@@ -77,17 +97,55 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Files are already uploaded to Vercel Blob by the client.
-    // We just receive the URLs and metadata here.
-    const uploadedFiles: { name: string; url: string; size: number }[] = Array.isArray(files)
-      ? files.map((f: { name: string; url: string; size: number }) => ({
-          name: f.name || 'unknown',
-          url: f.url || '',
-          size: f.size || 0,
-        }))
-      : [];
+    // Process file uploads
+    const files = formData.getAll('files') as File[];
+    const uploadedFiles: { name: string; url: string; size: number }[] = [];
 
-    // Log the consultant selection
+    if (files.length > MAX_FILES) {
+      return NextResponse.json(
+        { error: `Maximum ${MAX_FILES} files allowed.` },
+        { status: 400 }
+      );
+    }
+
+    for (const file of files) {
+      if (!file.name || file.size === 0) continue;
+
+      // Validate file size
+      if (file.size > MAX_FILE_SIZE) {
+        return NextResponse.json(
+          { error: `File "${file.name}" exceeds the 25MB size limit.` },
+          { status: 400 }
+        );
+      }
+
+      // Validate file type
+      const ext = file.name.split('.').pop()?.toLowerCase();
+      if (!ALLOWED_TYPES.includes(file.type) && !ALLOWED_EXTENSIONS.includes(ext || '')) {
+        return NextResponse.json(
+          { error: `File "${file.name}" is not an accepted type. Use PDF, JPG, PNG, or DOCX.` },
+          { status: 400 }
+        );
+      }
+
+      // Upload to Vercel Blob
+      const timestamp = Date.now();
+      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+      const pathname = `uploads/${timestamp}-${safeName}`;
+
+      const blob = await put(pathname, file, {
+        access: 'public',
+        addRandomSuffix: true,
+      });
+
+      uploadedFiles.push({
+        name: file.name,
+        url: blob.url,
+        size: file.size,
+      });
+    }
+
+    // Log the consultant selection for tracking
     await logConsultantSelection(consultant, name, projectType);
 
     // Build file links HTML

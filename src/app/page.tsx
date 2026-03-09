@@ -31,8 +31,8 @@ export default function HomePage() {
             <Link href="/upload-plans" className="btn-accent">
               Upload Your Plans
             </Link>
-            <Link href="/contact" className="btn-secondary border-white text-white hover:bg-white hover:text-brand-dark">
-              Contact Us
+            <Link href="/services" className="btn-secondary border-white text-white hover:bg-white hover:text-brand-dark">
+              How We Work
             </Link>
           </div>
         </div>
