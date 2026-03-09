@@ -1,6 +1,8 @@
 // ─── Akers Development Cost Estimator Pricing Engine ───
-// Rates derived from McAdams Residence baseline (2,400 sq ft heated)
-// All rates can be adjusted as pricing changes
+// Calibrated from two real projects:
+//   1) McAdams Residence — 2,400 sq ft heated, 1-story, metal roof/siding
+//   2) Watertown Triplex — 1,464 sq ft heated per unit, 2-story, shingle/lap siding
+// All rates can be adjusted as pricing changes.
 
 export interface ProjectInput {
   projectName: string;
@@ -12,7 +14,7 @@ export interface ProjectInput {
   numBedrooms: number;
   stories: 1 | 2;
   roofType: 'metal' | 'shingle';
-  sidingType: 'metal' | 'vinyl' | 'brick';
+  sidingType: 'metal' | 'vinyl' | 'brick' | 'lap' | 'board-batten';
   foundationType: 'slab' | 'crawlspace';
   includeHVAC: boolean;
   includeSeptic: boolean;
@@ -25,198 +27,298 @@ export interface LineItem {
   category: string;
   description: string;
   cost: number;
-  basis: string; // e.g. "2,400 sq ft × $10.08"
+  basis: string;
 }
 
 export interface Estimate {
   projectName: string;
   lineItems: LineItem[];
   subtotal: number;
+  contingency: number;
   consultingFee: number;
   totalCost: number;
   costPerHeatedSqFt: number;
   specs: {
     heatedSqFt: number;
     totalSqFt: number;
+    footprintSqFt: number;
     shopSqFt: number;
     carportSqFt: number;
     porchSqFt: number;
+    stories: number;
   };
 }
 
 // ─── BASE RATES ───
-// These are derived from the McAdams Residence (2,400 heated sq ft)
-// Adjust these numbers to update all future estimates
+// Concrete scales with FOOTPRINT (ground-level area only).
+// Key insight: 1-story = bigger footprint = more concrete.
+//              2-story = smaller footprint = less concrete, but more framing.
+//
+// McAdams (1-story): $40,200 concrete / 5,715 footprint = $7.03/sq ft
+// Triplex (2-story): $19,349 concrete / 1,029 footprint = $18.80/sq ft
+//   (higher per-footprint rate due to poured foundation walls for 2-story)
 
 const RATES = {
-  // Concrete — scales with total footprint (foundation goes under everything)
-  concreteLaborPerSqFt: 4.23,     // $24,200 / 5,715 total sq ft
-  concreteMaterialPerSqFt: 2.80,  // $16,000 / 5,715 total sq ft
+  // ── CONCRETE ──
+  // 1-story: simple slab, lower rate per footprint sq ft but MORE footprint
+  concrete1StoryPerFootprintSqFt: 7.03,   // McAdams: $40,200 / 5,715
+  // 2-story: poured foundation walls, higher rate but LESS footprint
+  concrete2StoryPerFootprintSqFt: 12.50,  // Blended rate for residential 2-story slab
 
-  // Framing — scales mainly with enclosed area (heated + shop)
-  framingPerEnclosedSqFt: 11.30,  // Calibrated to McAdams baseline
-  framingPerOpenSqFt: 2.40,       // Reduced rate for carport/porch framing
+  // ── FRAMING ──
+  // 1-story: framing scales with heated + enclosed area (no stairs)
+  framing1StoryPerEnclosedSqFt: 11.30,    // McAdams calibrated
+  framing1StoryPerOpenSqFt: 2.40,         // Carport/porch framing
+  // 2-story: more framing per heated sq ft (2nd floor joists, taller walls, more structure)
+  framing2StoryPerEnclosedSqFt: 14.50,    // Higher rate for 2-story complexity
+  framing2StoryPerOpenSqFt: 2.40,
+  // Stairs (2-story only)
+  stairsAllowance: 11000,                  // Triplex: $3,850 labor + $7,150 materials
 
-  // General materials (lumber, sheathing, hardware, windows, doors, etc.)
-  materialsPerEnclosedSqFt: 28.00, // Calibrated to McAdams baseline
-  materialsPerOpenSqFt: 6.50,      // Reduced rate for carport/porch materials
+  // ── GENERAL MATERIALS ──
+  // Lumber, sheathing, hardware, windows, doors, etc.
+  materialsPerEnclosedSqFt: 28.00,         // McAdams calibrated
+  materialsPerOpenSqFt: 6.50,
+  materials2StoryMultiplier: 1.10,          // 10% more materials for 2-story
 
-  // Drywall — heated area only
-  drywallPerSqFt: 6.00,           // $14,400 / 2,400
+  // ── DRYWALL ──
+  drywallPerSqFt: 6.00,                    // McAdams: $14,400 / 2,400
+  drywall2StoryMultiplier: 1.10,            // More wall area in 2-story (stairwells, taller spaces)
 
-  // Insulation — heated area only
-  insulationPerSqFt: 2.92,        // $7,000 / 2,400
+  // ── INSULATION ──
+  insulationPerSqFt: 2.92,                 // McAdams: $7,000 / 2,400
 
-  // Electrical — heated + shop
-  electricalPerEnclosedSqFt: 6.47, // $22,000 / 3,400
+  // ── ELECTRICAL ──
+  electricalPerEnclosedSqFt: 6.47,         // McAdams: $22,000 / 3,400
 
-  // HVAC — heated area only
-  hvacPerSqFt: 7.50,              // $18,000 / 2,400
+  // ── HVAC ──
+  hvacPerSqFt: 7.50,                       // McAdams: $18,000 / 2,400
 
-  // Roofing — scales with total footprint (roof covers everything)
-  roofingMetalPerSqFt: 2.59,      // $14,800 / 5,715
-  roofingShinglePerSqFt: 2.10,    // Shingle typically ~20% less
+  // ── PLUMBING ──
+  // Triplex data: $17,600 labor + $8,470 materials + $495 toilets = $26,565 per unit (3 baths + kitchen)
+  // That's ~$6,641 per bathroom/kitchen fixture group
+  plumbingPerBathroom: 5500,               // Rough + finish per bathroom
+  plumbingBaseKitchen: 3500,               // Kitchen plumbing
+  plumbingWalkInShowerUpgrade: 5800,       // Walk-in glass shower (master bath upgrade)
 
-  // Siding — scales with enclosed perimeter (approximated from sq footage)
-  sidingMetalPerEnclosedSqFt: 4.56, // $15,500 / 3,400
-  sidingVinylPerEnclosedSqFt: 3.80, // Vinyl ~17% less
-  sidingBrickPerEnclosedSqFt: 9.00, // Brick roughly double metal
+  // ── ROOFING ──
+  // Scales with FOOTPRINT (roof covers footprint, not per-floor area)
+  roofingMetalPerFootprintSqFt: 2.59,     // McAdams: $14,800 / 5,715
+  roofingShinglePerFootprintSqFt: 2.10,   // Shingle ~20% less
+  // 2-story: steeper roof pitches, more complexity
+  roofing2StoryMultiplier: 1.20,           // Triplex has 6/12 and 10/12 pitches
 
-  // Trim (baseboards, window/door casings) — heated area
-  trimPerSqFt: 2.67,              // $6,400 / 2,400
+  // ── SIDING ──
+  // Scales with enclosed area; 2-story has taller walls = more siding
+  sidingMetalPerEnclosedSqFt: 4.56,
+  sidingVinylPerEnclosedSqFt: 3.80,
+  sidingBrickPerEnclosedSqFt: 9.00,
+  sidingLapPerEnclosedSqFt: 4.20,          // Lap siding (from triplex)
+  sidingBoardBattenPerEnclosedSqFt: 4.80,  // Board & batten (from triplex)
+  siding2StoryMultiplier: 1.35,            // 2-story = ~35% more wall surface
 
-  // Flooring — heated area
-  flooringStandardPerSqFt: 1.67,  // $4,000 / 2,400
-  flooringUpgradedPerSqFt: 3.50,  // LVP / mid-grade
-  flooringPremiumPerSqFt: 6.00,   // Hardwood / tile
+  // ── TRIM ──
+  trimPerSqFt: 2.67,                       // McAdams: $6,400 / 2,400
 
-  // Plumbing fixtures — per bathroom + kitchen base
-  plumbingPerBathroom: 2125.00,   // $8,500 / 4 (assumes ~3 bath + kitchen)
-  plumbingBaseKitchen: 2125.00,   // Base kitchen plumbing allowance
+  // ── PAINT ──
+  paintLaborPerSqFt: 3.21,                 // Triplex: $7,700 / 2,400 (scaled to McAdams size)
+  paintMaterialPerSqFt: 0.92,              // Triplex: $2,200 / 2,400
 
-  // Cabinets & countertops
-  cabinetsBudget: 15000,          // Budget allowance
+  // ── FLOORING ──
+  flooringStandardPerSqFt: 1.67,           // McAdams: $4,000 / 2,400
+  flooringUpgradedPerSqFt: 4.50,           // LVP / mid-grade (adjusted from triplex: $6.33)
+  flooringPremiumPerSqFt: 7.00,            // Hardwood / tile
+
+  // ── CABINETS & COUNTERTOPS ──
+  cabinetsBudget: 15000,
   cabinetsMid: 22000,
   cabinetsPremium: 35000,
 
-  // Septic system — fixed cost
+  // ── APPLIANCES ──
+  applianceAllowance: 5720,                // Triplex: fridge $1,650 + stove $1,980 + micro $1,100 + water heater $990
+
+  // ── SITE WORK ──
   septicSystem: 10000,
+  sitePrepBase: 5500,                       // Triplex: dirt prep / grading
 
-  // Consulting fee — fixed per project
-  consultingFee: 45000,
+  // ── CONTINGENCY ──
+  contingencyRate: 0.10,                    // 10% contingency on all construction costs
 
-  // Story multiplier (2-story adds complexity)
-  twoStoryMultiplier: 1.15,       // 15% increase for 2-story framing/materials
+  // ── CONSULTING FEE ──
+  // Scales with project size: $45,000 minimum, increases for larger projects
+  consultingFeeMin: 45000,
+  consultingFeeMax: 75000,
+  // Fee scales linearly: $45K at 2,000 sq ft, $55K at 5,000 sq ft, up to $75K at 10,000+ sq ft
+  consultingFeeSqFtFloor: 2000,
+  consultingFeeSqFtCeiling: 10000,
 };
 
+// ─── Calculate consulting fee based on total heated sq ft ───
+function calcConsultingFee(heatedSqFt: number): number {
+  if (heatedSqFt <= RATES.consultingFeeSqFtFloor) return RATES.consultingFeeMin;
+  if (heatedSqFt >= RATES.consultingFeeSqFtCeiling) return RATES.consultingFeeMax;
+  const range = RATES.consultingFeeSqFtCeiling - RATES.consultingFeeSqFtFloor;
+  const feeRange = RATES.consultingFeeMax - RATES.consultingFeeMin;
+  const ratio = (heatedSqFt - RATES.consultingFeeSqFtFloor) / range;
+  return Math.round(RATES.consultingFeeMin + (ratio * feeRange));
+}
+
+// ─── Calculate footprint (ground-level area) ───
+function calcFootprint(input: ProjectInput): number {
+  if (input.stories === 1) {
+    // 1-story: everything is on one level
+    return input.heatedSqFt + input.shopSqFt + input.carportSqFt + input.porchSqFt;
+  }
+  // 2-story: heated area split across 2 floors, garage/carport/porch on ground only
+  const heatedFootprint = Math.ceil(input.heatedSqFt / 2);
+  return heatedFootprint + input.shopSqFt + input.carportSqFt + input.porchSqFt;
+}
+
 export function calculateEstimate(input: ProjectInput): Estimate {
+  const is2Story = input.stories === 2;
+  const footprint = calcFootprint(input);
   const totalSqFt = input.heatedSqFt + input.shopSqFt + input.carportSqFt + input.porchSqFt;
   const enclosedSqFt = input.heatedSqFt + input.shopSqFt;
   const openSqFt = input.carportSqFt + input.porchSqFt;
-  const storyFactor = input.stories === 2 ? RATES.twoStoryMultiplier : 1;
 
   const lineItems: LineItem[] = [];
 
-  // ── Concrete ──
-  const concreteLab = totalSqFt * RATES.concreteLaborPerSqFt;
+  // ── Site Prep ──
   lineItems.push({
-    category: 'Foundation',
-    description: 'Concrete Pouring & Finishing (Labor)',
-    cost: Math.round(concreteLab),
-    basis: `${totalSqFt.toLocaleString()} sq ft × $${RATES.concreteLaborPerSqFt}/sq ft`,
+    category: 'Site Work',
+    description: 'Site Preparation & Grading',
+    cost: RATES.sitePrepBase,
+    basis: 'Base site prep allowance',
   });
 
-  const concreteMat = totalSqFt * RATES.concreteMaterialPerSqFt;
+  // ── Concrete ──
+  // KEY: Concrete scales with FOOTPRINT, not total heated area
+  // 1-story has MORE footprint → MORE concrete
+  // 2-story has LESS footprint → LESS concrete (but higher per-sq-ft rate)
+  const concreteRate = is2Story
+    ? RATES.concrete2StoryPerFootprintSqFt
+    : RATES.concrete1StoryPerFootprintSqFt;
+  const concreteCost = footprint * concreteRate;
+
   lineItems.push({
     category: 'Foundation',
-    description: 'Concrete Materials',
-    cost: Math.round(concreteMat),
-    basis: `${totalSqFt.toLocaleString()} sq ft × $${RATES.concreteMaterialPerSqFt}/sq ft`,
+    description: `Concrete (${is2Story ? '2-story foundation' : 'slab on grade'})`,
+    cost: Math.round(concreteCost),
+    basis: `${footprint.toLocaleString()} sq ft footprint × $${concreteRate.toFixed(2)}/sq ft`,
   });
 
   // ── Framing ──
-  const framingEnclosed = enclosedSqFt * RATES.framingPerEnclosedSqFt * storyFactor;
-  const framingOpen = openSqFt * RATES.framingPerOpenSqFt;
-  const framingTotal = framingEnclosed + framingOpen;
+  // KEY: 2-story has higher framing rate (2nd floor joists, taller walls, more structural)
+  const framingEnclosedRate = is2Story
+    ? RATES.framing2StoryPerEnclosedSqFt
+    : RATES.framing1StoryPerEnclosedSqFt;
+  const framingOpenRate = is2Story
+    ? RATES.framing2StoryPerOpenSqFt
+    : RATES.framing1StoryPerOpenSqFt;
+
+  const framingEnclosed = enclosedSqFt * framingEnclosedRate;
+  const framingOpen = openSqFt * framingOpenRate;
+  let framingTotal = framingEnclosed + framingOpen;
+  let framingBasis = `${enclosedSqFt.toLocaleString()} enclosed × $${framingEnclosedRate}`;
+  if (openSqFt > 0) framingBasis += ` + ${openSqFt.toLocaleString()} open × $${framingOpenRate}`;
+
   lineItems.push({
     category: 'Structure',
-    description: 'Framing',
+    description: `Framing (${is2Story ? '2-story' : '1-story'})`,
     cost: Math.round(framingTotal),
-    basis: `${enclosedSqFt.toLocaleString()} enclosed × $${RATES.framingPerEnclosedSqFt} + ${openSqFt.toLocaleString()} open × $${RATES.framingPerOpenSqFt}${input.stories === 2 ? ' (2-story +15%)' : ''}`,
+    basis: framingBasis,
   });
 
+  // Stairs (2-story only)
+  if (is2Story) {
+    lineItems.push({
+      category: 'Structure',
+      description: 'Stairs (labor & materials)',
+      cost: RATES.stairsAllowance,
+      basis: '2-story stair system allowance',
+    });
+  }
+
   // ── General Materials ──
-  const matEnclosed = enclosedSqFt * RATES.materialsPerEnclosedSqFt * storyFactor;
+  const matMultiplier = is2Story ? RATES.materials2StoryMultiplier : 1;
+  const matEnclosed = enclosedSqFt * RATES.materialsPerEnclosedSqFt * matMultiplier;
   const matOpen = openSqFt * RATES.materialsPerOpenSqFt;
-  const materialsTotal = matEnclosed + matOpen;
   lineItems.push({
     category: 'Structure',
     description: 'General Materials (lumber, sheathing, hardware, windows, doors)',
-    cost: Math.round(materialsTotal),
-    basis: `${enclosedSqFt.toLocaleString()} enclosed × $${RATES.materialsPerEnclosedSqFt} + ${openSqFt.toLocaleString()} open × $${RATES.materialsPerOpenSqFt}${input.stories === 2 ? ' (2-story +15%)' : ''}`,
+    cost: Math.round(matEnclosed + matOpen),
+    basis: `${enclosedSqFt.toLocaleString()} enclosed × $${RATES.materialsPerEnclosedSqFt}${is2Story ? ' (+10% 2-story)' : ''} + ${openSqFt.toLocaleString()} open × $${RATES.materialsPerOpenSqFt}`,
   });
 
   // ── Roofing ──
-  const roofRate = input.roofType === 'metal' ? RATES.roofingMetalPerSqFt : RATES.roofingShinglePerSqFt;
-  const roofingCost = totalSqFt * roofRate;
+  // Roof covers the FOOTPRINT area, with pitch multiplier for 2-story
+  const baseRoofRate = input.roofType === 'metal'
+    ? RATES.roofingMetalPerFootprintSqFt
+    : RATES.roofingShinglePerFootprintSqFt;
+  const roofMultiplier = is2Story ? RATES.roofing2StoryMultiplier : 1;
+  const roofingCost = footprint * baseRoofRate * roofMultiplier;
   lineItems.push({
     category: 'Exterior',
     description: `Roofing (${input.roofType === 'metal' ? 'Metal' : 'Shingle'})`,
     cost: Math.round(roofingCost),
-    basis: `${totalSqFt.toLocaleString()} sq ft × $${roofRate}/sq ft`,
+    basis: `${footprint.toLocaleString()} sq ft footprint × $${baseRoofRate}/sq ft${is2Story ? ' (+20% steep pitch)' : ''}`,
   });
 
   // ── Siding ──
-  const sidingRateMap = {
+  const sidingRateMap: Record<string, number> = {
     metal: RATES.sidingMetalPerEnclosedSqFt,
     vinyl: RATES.sidingVinylPerEnclosedSqFt,
     brick: RATES.sidingBrickPerEnclosedSqFt,
+    lap: RATES.sidingLapPerEnclosedSqFt,
+    'board-batten': RATES.sidingBoardBattenPerEnclosedSqFt,
   };
-  const sidingRate = sidingRateMap[input.sidingType];
-  const sidingCost = enclosedSqFt * sidingRate * storyFactor;
-  const sidingLabel = input.sidingType.charAt(0).toUpperCase() + input.sidingType.slice(1);
+  const sidingRate = sidingRateMap[input.sidingType] || RATES.sidingLapPerEnclosedSqFt;
+  const sidingMultiplier = is2Story ? RATES.siding2StoryMultiplier : 1;
+  const sidingCost = enclosedSqFt * sidingRate * sidingMultiplier;
+  const sidingLabels: Record<string, string> = {
+    metal: 'Metal', vinyl: 'Vinyl', brick: 'Brick',
+    lap: 'Lap Siding', 'board-batten': 'Board & Batten',
+  };
   lineItems.push({
     category: 'Exterior',
-    description: `Siding (${sidingLabel})`,
+    description: `Siding (${sidingLabels[input.sidingType] || input.sidingType})`,
     cost: Math.round(sidingCost),
-    basis: `${enclosedSqFt.toLocaleString()} enclosed sq ft × $${sidingRate}/sq ft${input.stories === 2 ? ' (2-story +15%)' : ''}`,
+    basis: `${enclosedSqFt.toLocaleString()} enclosed × $${sidingRate}/sq ft${is2Story ? ' (+35% taller walls)' : ''}`,
   });
 
   // ── Drywall ──
-  const drywallCost = input.heatedSqFt * RATES.drywallPerSqFt * storyFactor;
+  const drywallMultiplier = is2Story ? RATES.drywall2StoryMultiplier : 1;
+  const drywallCost = input.heatedSqFt * RATES.drywallPerSqFt * drywallMultiplier;
   lineItems.push({
     category: 'Interior',
     description: 'Drywall (hang, tape & finish)',
     cost: Math.round(drywallCost),
-    basis: `${input.heatedSqFt.toLocaleString()} heated sq ft × $${RATES.drywallPerSqFt}/sq ft${input.stories === 2 ? ' (2-story +15%)' : ''}`,
+    basis: `${input.heatedSqFt.toLocaleString()} heated sq ft × $${RATES.drywallPerSqFt}/sq ft${is2Story ? ' (+10% stairwells)' : ''}`,
   });
 
   // ── Insulation ──
-  const insulationCost = input.heatedSqFt * RATES.insulationPerSqFt;
   lineItems.push({
     category: 'Interior',
     description: 'Insulation',
-    cost: Math.round(insulationCost),
+    cost: Math.round(input.heatedSqFt * RATES.insulationPerSqFt),
     basis: `${input.heatedSqFt.toLocaleString()} heated sq ft × $${RATES.insulationPerSqFt}/sq ft`,
   });
 
   // ── Electrical ──
   const elecSqFt = input.includeShopElectrical ? enclosedSqFt : input.heatedSqFt;
-  const electricalCost = elecSqFt * RATES.electricalPerEnclosedSqFt;
   lineItems.push({
     category: 'Mechanical',
     description: `Electrical${input.includeShopElectrical ? ' (incl. shop)' : ''}`,
-    cost: Math.round(electricalCost),
+    cost: Math.round(elecSqFt * RATES.electricalPerEnclosedSqFt),
     basis: `${elecSqFt.toLocaleString()} sq ft × $${RATES.electricalPerEnclosedSqFt}/sq ft`,
   });
 
   // ── HVAC ──
   if (input.includeHVAC) {
-    const hvacCost = input.heatedSqFt * RATES.hvacPerSqFt;
     lineItems.push({
       category: 'Mechanical',
       description: 'HVAC System',
-      cost: Math.round(hvacCost),
+      cost: Math.round(input.heatedSqFt * RATES.hvacPerSqFt),
       basis: `${input.heatedSqFt.toLocaleString()} heated sq ft × $${RATES.hvacPerSqFt}/sq ft`,
     });
   }
@@ -225,18 +327,26 @@ export function calculateEstimate(input: ProjectInput): Estimate {
   const plumbingCost = (input.numBathrooms * RATES.plumbingPerBathroom) + RATES.plumbingBaseKitchen;
   lineItems.push({
     category: 'Mechanical',
-    description: 'Plumbing Fixtures & Rough-in',
+    description: 'Plumbing (rough-in & fixtures)',
     cost: Math.round(plumbingCost),
-    basis: `${input.numBathrooms} bathrooms × $${RATES.plumbingPerBathroom.toLocaleString()} + kitchen`,
+    basis: `${input.numBathrooms} bath × $${RATES.plumbingPerBathroom.toLocaleString()} + kitchen $${RATES.plumbingBaseKitchen.toLocaleString()}`,
   });
 
   // ── Trim ──
-  const trimCost = input.heatedSqFt * RATES.trimPerSqFt;
   lineItems.push({
     category: 'Interior',
     description: 'Trim (baseboards, window & door casings)',
-    cost: Math.round(trimCost),
+    cost: Math.round(input.heatedSqFt * RATES.trimPerSqFt),
     basis: `${input.heatedSqFt.toLocaleString()} heated sq ft × $${RATES.trimPerSqFt}/sq ft`,
+  });
+
+  // ── Paint ──
+  const paintCost = input.heatedSqFt * (RATES.paintLaborPerSqFt + RATES.paintMaterialPerSqFt);
+  lineItems.push({
+    category: 'Interior',
+    description: 'Paint (labor & materials)',
+    cost: Math.round(paintCost),
+    basis: `${input.heatedSqFt.toLocaleString()} heated sq ft × $${(RATES.paintLaborPerSqFt + RATES.paintMaterialPerSqFt).toFixed(2)}/sq ft`,
   });
 
   // ── Flooring ──
@@ -246,21 +356,16 @@ export function calculateEstimate(input: ProjectInput): Estimate {
     premium: RATES.flooringPremiumPerSqFt,
   };
   const floorRate = flooringRateMap[input.flooringType];
-  const flooringCost = input.heatedSqFt * floorRate;
   const floorLabel = input.flooringType.charAt(0).toUpperCase() + input.flooringType.slice(1);
   lineItems.push({
     category: 'Interior',
     description: `Flooring (${floorLabel})`,
-    cost: Math.round(flooringCost),
+    cost: Math.round(input.heatedSqFt * floorRate),
     basis: `${input.heatedSqFt.toLocaleString()} heated sq ft × $${floorRate}/sq ft`,
   });
 
   // ── Cabinets & Countertops ──
-  const cabinetCostMap = {
-    budget: RATES.cabinetsBudget,
-    mid: RATES.cabinetsMid,
-    premium: RATES.cabinetsPremium,
-  };
+  const cabinetCostMap = { budget: RATES.cabinetsBudget, mid: RATES.cabinetsMid, premium: RATES.cabinetsPremium };
   const cabinetCost = cabinetCostMap[input.cabinetGrade];
   const cabinetLabel = input.cabinetGrade.charAt(0).toUpperCase() + input.cabinetGrade.slice(1);
   lineItems.push({
@@ -268,6 +373,14 @@ export function calculateEstimate(input: ProjectInput): Estimate {
     description: `Cabinets & Countertops (${cabinetLabel})`,
     cost: cabinetCost,
     basis: `${cabinetLabel} grade allowance`,
+  });
+
+  // ── Appliances ──
+  lineItems.push({
+    category: 'Interior',
+    description: 'Appliances (fridge, range, microwave, water heater)',
+    cost: RATES.applianceAllowance,
+    basis: 'Standard appliance package',
   });
 
   // ── Septic ──
@@ -280,25 +393,29 @@ export function calculateEstimate(input: ProjectInput): Estimate {
     });
   }
 
-  // Calculate totals
+  // ── Calculate totals ──
   const subtotal = lineItems.reduce((sum, item) => sum + item.cost, 0);
-  const consultingFee = RATES.consultingFee;
-  const totalCost = subtotal + consultingFee;
+  const contingency = Math.round(subtotal * RATES.contingencyRate);
+  const consultingFee = calcConsultingFee(input.heatedSqFt);
+  const totalCost = subtotal + contingency + consultingFee;
   const costPerHeatedSqFt = Math.round((totalCost / input.heatedSqFt) * 100) / 100;
 
   return {
     projectName: input.projectName,
     lineItems,
     subtotal,
+    contingency,
     consultingFee,
     totalCost,
     costPerHeatedSqFt,
     specs: {
       heatedSqFt: input.heatedSqFt,
       totalSqFt: totalSqFt,
+      footprintSqFt: footprint,
       shopSqFt: input.shopSqFt,
       carportSqFt: input.carportSqFt,
       porchSqFt: input.porchSqFt,
+      stories: input.stories,
     },
   };
 }

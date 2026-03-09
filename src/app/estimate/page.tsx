@@ -271,6 +271,8 @@ export default function EstimatePage() {
                     >
                       <option value="metal">Metal Siding</option>
                       <option value="vinyl">Vinyl Siding</option>
+                      <option value="lap">Lap Siding</option>
+                      <option value="board-batten">Board &amp; Batten</option>
                       <option value="brick">Brick</option>
                     </select>
                   </div>
@@ -437,6 +439,22 @@ function EstimateResults({ estimate, onBack }: { estimate: Estimate; onBack: () 
           );
         })}
 
+        {/* Contingency */}
+        <div className="border border-gray-200">
+          <div className="flex items-center justify-between p-5 bg-gray-50">
+            <h3 className="font-semibold text-brand-charcoal uppercase tracking-wide text-sm">
+              10% Contingency
+            </h3>
+            <span className="font-semibold text-brand-charcoal">{formatCurrency(estimate.contingency)}</span>
+          </div>
+          <div className="p-5">
+            <p className="text-sm text-brand-stone">
+              Industry-standard contingency buffer for unforeseen conditions,
+              material price fluctuations, and change orders.
+            </p>
+          </div>
+        </div>
+
         {/* Consulting Fee */}
         <div className="border-2 border-brand-stone">
           <div className="flex items-center justify-between p-5 bg-brand-cream">
@@ -459,6 +477,7 @@ function EstimateResults({ estimate, onBack }: { estimate: Estimate; onBack: () 
             <div>
               <p className="text-sm text-gray-400 uppercase tracking-wide">Construction Subtotal</p>
               <p className="text-2xl font-bold mt-1">{formatCurrency(estimate.subtotal)}</p>
+              <p className="text-sm text-gray-500 mt-1">+ {formatCurrency(estimate.contingency)} contingency</p>
             </div>
             <div className="sm:text-right">
               <p className="text-sm text-brand-sand uppercase tracking-wide">Total Project Cost</p>

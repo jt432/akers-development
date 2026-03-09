@@ -52,7 +52,7 @@ interface QuickSpecs {
   numBathrooms: number;
   stories: 1 | 2;
   roofType: 'metal' | 'shingle';
-  sidingType: 'metal' | 'vinyl' | 'brick';
+  sidingType: 'metal' | 'vinyl' | 'brick' | 'lap' | 'board-batten';
   includeHVAC: boolean;
   includeSeptic: boolean;
   includeShopElectrical: boolean;
@@ -265,6 +265,19 @@ export default function UploadPlansPage() {
                 );
               })}
 
+              {/* Contingency */}
+              <div className="border border-gray-200">
+                <div className="flex items-center justify-between p-5 bg-gray-50">
+                  <h3 className="font-semibold text-brand-charcoal uppercase tracking-wide text-sm">10% Contingency</h3>
+                  <span className="font-semibold text-brand-charcoal">{formatCurrency(estimate.contingency)}</span>
+                </div>
+                <div className="p-5">
+                  <p className="text-sm text-brand-stone">
+                    Industry-standard buffer for unforeseen conditions and material price fluctuations.
+                  </p>
+                </div>
+              </div>
+
               {/* Consulting Fee */}
               <div className="border-2 border-brand-stone">
                 <div className="flex items-center justify-between p-5 bg-brand-cream">
@@ -285,6 +298,7 @@ export default function UploadPlansPage() {
                   <div>
                     <p className="text-sm text-gray-400 uppercase tracking-wide">Construction Subtotal</p>
                     <p className="text-2xl font-bold mt-1">{formatCurrency(estimate.subtotal)}</p>
+                    <p className="text-sm text-gray-500 mt-1">+ {formatCurrency(estimate.contingency)} contingency</p>
                   </div>
                   <div className="sm:text-right">
                     <p className="text-sm text-brand-sand uppercase tracking-wide">Total Project Cost</p>
@@ -465,6 +479,8 @@ export default function UploadPlansPage() {
                     <select value={specs.sidingType} onChange={e => updateSpec('sidingType', e.target.value)} className="input-field">
                       <option value="metal">Metal</option>
                       <option value="vinyl">Vinyl</option>
+                      <option value="lap">Lap Siding</option>
+                      <option value="board-batten">Board & Batten</option>
                       <option value="brick">Brick</option>
                     </select>
                   </div>
