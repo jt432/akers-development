@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef } from 'react';
+import { upload } from '@vercel/blob/client';
 import PageHero from '@/components/PageHero';
 import FileUploader from '@/components/FileUploader';
 import type { Estimate } from '@/lib/pricing';
@@ -97,33 +98,64 @@ export default function UploadPlansPage() {
   };
 
   // ── Submit the upload form ──
+  // Files are uploaded directly to Vercel Blob from the browser (bypasses
+  // the 4.5MB serverless body size limit), then we send just the form
+  // text fields + blob URLs as JSON to the API.
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setSubmitting(true);
     setError('');
 
     const form = e.currentTarget;
-    const formData = new FormData();
 
-    formData.append('name', (form.elements.namedItem('name') as HTMLInputElement).value);
-    formData.append('email', (form.elements.namedItem('email') as HTMLInputElement).value);
-    formData.append('phone', (form.elements.namedItem('phone') as HTMLInputElement).value);
-    formData.append('location', (form.elements.namedItem('location') as HTMLInputElement).value);
-    formData.append('projectType', (form.elements.namedItem('projectType') as HTMLSelectElement).value);
-    formData.append('squareFootage', (form.elements.namedItem('squareFootage') as HTMLInputElement).value);
-    formData.append('description', (form.elements.namedItem('description') as HTMLTextAreaElement).value);
-    formData.append('consultant', (form.elements.namedItem('consultant') as HTMLSelectElement).value);
+    const name = (form.elements.namedItem('name') as HTMLInputElement).value;
+    const email = (form.elements.namedItem('email') as HTMLInputElement).value;
+    const phone = (form.elements.namedItem('phone') as HTMLInputElement).value;
+    const location = (form.elements.namedItem('location') as HTMLInputElement).value;
+    const projectType = (form.elements.namedItem('projectType') as HTMLSelectElement).value;
+    const squareFootage = (form.elements.namedItem('squareFootage') as HTMLInputElement).value;
+    const description = (form.elements.namedItem('description') as HTMLTextAreaElement).value;
+    const consultant = (form.elements.namedItem('consultant') as HTMLSelectElement).value;
 
     // Save project name for estimate
-    const pName = (form.elements.namedItem('name') as HTMLInputElement).value + ' Project';
-    setSpecs(prev => ({ ...prev, projectName: pName }));
-
-    filesRef.current.forEach((file) => {
-      formData.append('files', file);
-    });
+    setSpecs(prev => ({ ...prev, projectName: name + ' Project' }));
 
     try {
-      const res = await fetch('/api/upload', { method: 'POST', body: formData });
+      // Step 1: Upload files directly to Vercel Blob from browser
+      const uploadedFiles: { name: string; url: string; size: number }[] = [];
+
+      for (const file of filesRef.current) {
+        const timestamp = Date.now();
+        const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+
+        const blob = await upload(`uploads/${timestamp}-${safeName}`, file, {
+          access: 'public',
+          handleUploadUrl: '/api/upload-token',
+        });
+
+        uploadedFiles.push({
+          name: file.name,
+          url: blob.url,
+          size: file.size,
+        });
+      }
+
+      // Step 2: Send form data + file URLs as JSON (small payload)
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name,
+          email,
+          phone,
+          location,
+          projectType,
+          squareFootage,
+          description,
+          consultant,
+          files: uploadedFiles,
+        }),
+      });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Submission failed');
       setSubmitted(true);
