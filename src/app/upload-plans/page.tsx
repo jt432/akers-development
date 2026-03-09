@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { upload } from '@vercel/blob/client';
 import PageHero from '@/components/PageHero';
 import FileUploader from '@/components/FileUploader';
 import type { Estimate } from '@/lib/pricing';
@@ -121,21 +120,20 @@ export default function UploadPlansPage() {
     setSpecs(prev => ({ ...prev, projectName: name + ' Project' }));
 
     try {
-      // Step 1: Upload files directly to Vercel Blob from browser
+      // Step 1: Upload files one at a time via streaming PUT (bypasses 4.5MB limit)
       const uploadedFiles: { name: string; url: string; size: number }[] = [];
 
       for (const file of filesRef.current) {
-        const timestamp = Date.now();
-        const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-
-        const blob = await upload(`uploads/${timestamp}-${safeName}`, file, {
-          access: 'public',
-          handleUploadUrl: '/api/upload-token',
+        const res = await fetch(`/api/upload-file?filename=${encodeURIComponent(file.name)}`, {
+          method: 'PUT',
+          body: file,
         });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || `Failed to upload ${file.name}`);
 
         uploadedFiles.push({
           name: file.name,
-          url: blob.url,
+          url: data.url,
           size: file.size,
         });
       }
