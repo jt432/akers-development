@@ -10,7 +10,6 @@ const navLinks = [
   { href: '/projects', label: 'Projects' },
   { href: '/become-a-developer', label: 'Become a Developer' },
   { href: '/our-companies', label: 'Our Companies' },
-  { href: '/estimate', label: 'Cost Estimator' },
   { href: '/upload-plans', label: 'Upload Plans' },
   { href: '/contact', label: 'Contact' },
 ];
