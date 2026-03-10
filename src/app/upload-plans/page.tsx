@@ -2,7 +2,7 @@
 
 import { useState, useRef } from 'react';
 import PageHero from '@/components/PageHero';
-import FileUploader from '@/components/FileUploader';
+import FileUploader, { type UploadedBlobFile } from '@/components/FileUploader';
 
 const projectTypes = [
   'Custom Home Build',
@@ -25,7 +25,7 @@ export default function UploadPlansPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState('');
-  const filesRef = useRef<File[]>([]);
+  const blobFilesRef = useRef<UploadedBlobFile[]>([]);
   const formRef = useRef<HTMLFormElement>(null);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -34,25 +34,26 @@ export default function UploadPlansPage() {
     setError('');
 
     const form = e.currentTarget;
-    const formData = new FormData();
 
-    // Append form fields
-    formData.append('name', (form.elements.namedItem('name') as HTMLInputElement).value);
-    formData.append('email', (form.elements.namedItem('email') as HTMLInputElement).value);
-    formData.append('phone', (form.elements.namedItem('phone') as HTMLInputElement).value);
-    formData.append('location', (form.elements.namedItem('location') as HTMLInputElement).value);
-    formData.append('projectType', (form.elements.namedItem('projectType') as HTMLSelectElement).value);
-    formData.append('squareFootage', (form.elements.namedItem('squareFootage') as HTMLInputElement).value);
-    formData.append('description', (form.elements.namedItem('description') as HTMLTextAreaElement).value);
-    formData.append('consultant', (form.elements.namedItem('consultant') as HTMLSelectElement).value);
-
-    // Append files
-    filesRef.current.forEach((file) => {
-      formData.append('files', file);
-    });
+    // Send JSON with blob URLs instead of raw FormData with files
+    const payload = {
+      name: (form.elements.namedItem('name') as HTMLInputElement).value,
+      email: (form.elements.namedItem('email') as HTMLInputElement).value,
+      phone: (form.elements.namedItem('phone') as HTMLInputElement).value,
+      location: (form.elements.namedItem('location') as HTMLInputElement).value,
+      projectType: (form.elements.namedItem('projectType') as HTMLSelectElement).value,
+      squareFootage: (form.elements.namedItem('squareFootage') as HTMLInputElement).value,
+      description: (form.elements.namedItem('description') as HTMLTextAreaElement).value,
+      consultant: (form.elements.namedItem('consultant') as HTMLSelectElement).value,
+      files: blobFilesRef.current, // Already uploaded to Vercel Blob — just URLs
+    };
 
     try {
-      const res = await fetch('/api/upload', { method: 'POST', body: formData });
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
       const data = await res.json();
 
       if (!res.ok) {
@@ -61,7 +62,7 @@ export default function UploadPlansPage() {
 
       setSubmitted(true);
       formRef.current?.reset();
-      filesRef.current = [];
+      blobFilesRef.current = [];
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
     } finally {
@@ -199,7 +200,7 @@ export default function UploadPlansPage() {
             {/* File Upload */}
             <div>
               <h3 className="heading-sm mb-6">Upload Plans &amp; Documents</h3>
-              <FileUploader onFilesChange={(files) => { filesRef.current = files; }} />
+              <FileUploader onFilesChange={(files) => { blobFilesRef.current = files; }} />
             </div>
 
             {/* Disclaimer */}

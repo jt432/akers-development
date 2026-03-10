@@ -1,18 +1,20 @@
 'use client';
 
 import { useCallback, useState } from 'react';
+import { upload } from '@vercel/blob/client';
 
-interface UploadedFile {
+export interface UploadedBlobFile {
   name: string;
   size: number;
+  url: string;
 }
 
-export default function FileUploader({
-  onFilesChange,
-}: {
-  onFilesChange: (files: File[]) => void;
-}) {
-  const [files, setFiles] = useState<UploadedFile[]>([]);
+interface FileUploaderProps {
+  onFilesChange: (files: UploadedBlobFile[]) => void;
+}
+
+export default function FileUploader({ onFilesChange }: FileUploaderProps) {
+  const [files, setFiles] = useState<(UploadedBlobFile & { uploading?: boolean; error?: string })[]>([]);
   const [dragActive, setDragActive] = useState(false);
 
   const acceptedTypes = [
@@ -25,37 +27,98 @@ export default function FileUploader({
   const maxFileSize = 25 * 1024 * 1024; // 25MB per file
   const maxFiles = 10;
 
+  const uploadFile = async (file: File): Promise<UploadedBlobFile | null> => {
+    try {
+      const timestamp = Date.now();
+      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+      const pathname = `uploads/${timestamp}-${safeName}`;
+
+      const blob = await upload(pathname, file, {
+        access: 'public',
+        handleUploadUrl: '/api/upload-token',
+      });
+
+      return {
+        name: file.name,
+        size: file.size,
+        url: blob.url,
+      };
+    } catch (err) {
+      console.error(`Failed to upload ${file.name}:`, err);
+      return null;
+    }
+  };
+
   const handleFiles = useCallback(
-    (newFiles: FileList | null) => {
+    async (newFiles: FileList | null) => {
       if (!newFiles) return;
-      const valid: File[] = [];
-      const display: UploadedFile[] = [...files];
+
+      const currentCount = files.filter(f => !f.error).length;
+      const toProcess: File[] = [];
 
       Array.from(newFiles).forEach((file) => {
-        if (display.length + valid.length >= maxFiles) return;
+        if (currentCount + toProcess.length >= maxFiles) return;
         if (file.size > maxFileSize) {
           alert(`${file.name} exceeds the 25MB file size limit.`);
           return;
         }
-        // Check extension as fallback for type
         const ext = file.name.split('.').pop()?.toLowerCase();
         const validExt = ['pdf', 'jpg', 'jpeg', 'png', 'docx'].includes(ext || '');
         if (!acceptedTypes.includes(file.type) && !validExt) {
           alert(`${file.name} is not an accepted file type. Please upload PDF, JPG, PNG, or DOCX files.`);
           return;
         }
-        valid.push(file);
-        display.push({ name: file.name, size: file.size });
+        toProcess.push(file);
       });
 
-      setFiles(display);
-      onFilesChange(valid);
+      if (toProcess.length === 0) return;
+
+      // Add files in "uploading" state
+      const placeholders = toProcess.map(f => ({
+        name: f.name,
+        size: f.size,
+        url: '',
+        uploading: true,
+      }));
+      const updated = [...files, ...placeholders];
+      setFiles(updated);
+
+      // Upload each file directly to Vercel Blob
+      const results = await Promise.all(toProcess.map(f => uploadFile(f)));
+
+      setFiles(prev => {
+        const completed = [...prev];
+        let placeholderIdx = prev.length - toProcess.length;
+
+        results.forEach((result, i) => {
+          if (result) {
+            completed[placeholderIdx + i] = { ...result, uploading: false };
+          } else {
+            completed[placeholderIdx + i] = {
+              ...completed[placeholderIdx + i],
+              uploading: false,
+              error: 'Upload failed',
+            };
+          }
+        });
+
+        // Filter out failed uploads and notify parent
+        const successful = completed.filter(f => f.url && !f.error);
+        onFilesChange(successful.map(({ name, size, url }) => ({ name, size, url })));
+
+        return completed.filter(f => !f.error);
+      });
     },
     [files, onFilesChange]
   );
 
   const removeFile = (index: number) => {
-    setFiles((prev) => prev.filter((_, i) => i !== index));
+    setFiles((prev) => {
+      const updated = prev.filter((_, i) => i !== index);
+      const successful = updated.filter(f => f.url && !f.error && !f.uploading);
+      onFilesChange(successful.map(({ name, size, url }) => ({ name, size, url })));
+      return updated;
+    });
   };
 
   const formatSize = (bytes: number) => {
@@ -108,22 +171,33 @@ export default function FileUploader({
           {files.map((file, i) => (
             <div key={i} className="flex items-center justify-between bg-brand-cream px-4 py-3">
               <div className="flex items-center gap-3 min-w-0">
-                <svg className="w-5 h-5 text-brand-stone shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
+                {file.uploading ? (
+                  <svg className="w-5 h-5 text-brand-stone shrink-0 animate-spin" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                ) : (
+                  <svg className="w-5 h-5 text-brand-stone shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                )}
                 <span className="text-sm text-brand-charcoal truncate">{file.name}</span>
-                <span className="text-xs text-gray-400 shrink-0">{formatSize(file.size)}</span>
+                <span className="text-xs text-gray-400 shrink-0">
+                  {file.uploading ? 'Uploading...' : formatSize(file.size)}
+                </span>
               </div>
-              <button
-                type="button"
-                onClick={() => removeFile(i)}
-                className="text-gray-400 hover:text-red-500 transition-colors ml-3"
-              >
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
+              {!file.uploading && (
+                <button
+                  type="button"
+                  onClick={() => removeFile(i)}
+                  className="text-gray-400 hover:text-red-500 transition-colors ml-3"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              )}
             </div>
           ))}
         </div>

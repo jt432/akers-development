@@ -2,16 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { put } from '@vercel/blob';
 import { sendNotificationEmail } from '@/lib/email';
 
-const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25MB
-const MAX_FILES = 10;
-const ALLOWED_TYPES = [
-  'application/pdf',
-  'image/jpeg',
-  'image/png',
-  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-];
-const ALLOWED_EXTENSIONS = ['pdf', 'jpg', 'jpeg', 'png', 'docx'];
-
 const VALID_CONSULTANTS = [
   'Jon Tyler Akers',
   'Tristan Gardner',
@@ -55,6 +45,12 @@ async function logConsultantSelection(consultant: string, clientName: string, pr
   }
 }
 
+interface UploadedFile {
+  name: string;
+  url: string;
+  size: number;
+}
+
 export async function POST(req: NextRequest) {
   try {
     const ip = req.headers.get('x-forwarded-for') || 'unknown';
@@ -65,17 +61,30 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const formData = await req.formData();
+    // Now accepts JSON instead of FormData — files are already uploaded to Blob
+    const body = await req.json();
 
-    // Extract fields
-    const name = formData.get('name') as string;
-    const email = formData.get('email') as string;
-    const phone = formData.get('phone') as string;
-    const location = formData.get('location') as string;
-    const projectType = formData.get('projectType') as string;
-    const squareFootage = formData.get('squareFootage') as string;
-    const description = formData.get('description') as string;
-    const consultant = formData.get('consultant') as string;
+    const {
+      name,
+      email,
+      phone,
+      location,
+      projectType,
+      squareFootage,
+      description,
+      consultant,
+      files: uploadedFiles,
+    } = body as {
+      name: string;
+      email: string;
+      phone: string;
+      location: string;
+      projectType: string;
+      squareFootage: string;
+      description: string;
+      consultant: string;
+      files: UploadedFile[];
+    };
 
     // Validation
     if (!name || !email || !location || !projectType || !description || !consultant) {
@@ -97,60 +106,14 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Process file uploads
-    const files = formData.getAll('files') as File[];
-    const uploadedFiles: { name: string; url: string; size: number }[] = [];
-
-    if (files.length > MAX_FILES) {
-      return NextResponse.json(
-        { error: `Maximum ${MAX_FILES} files allowed.` },
-        { status: 400 }
-      );
-    }
-
-    for (const file of files) {
-      if (!file.name || file.size === 0) continue;
-
-      // Validate file size
-      if (file.size > MAX_FILE_SIZE) {
-        return NextResponse.json(
-          { error: `File "${file.name}" exceeds the 25MB size limit.` },
-          { status: 400 }
-        );
-      }
-
-      // Validate file type
-      const ext = file.name.split('.').pop()?.toLowerCase();
-      if (!ALLOWED_TYPES.includes(file.type) && !ALLOWED_EXTENSIONS.includes(ext || '')) {
-        return NextResponse.json(
-          { error: `File "${file.name}" is not an accepted type. Use PDF, JPG, PNG, or DOCX.` },
-          { status: 400 }
-        );
-      }
-
-      // Upload to Vercel Blob
-      const timestamp = Date.now();
-      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-      const pathname = `uploads/${timestamp}-${safeName}`;
-
-      const blob = await put(pathname, file, {
-        access: 'public',
-        addRandomSuffix: true,
-      });
-
-      uploadedFiles.push({
-        name: file.name,
-        url: blob.url,
-        size: file.size,
-      });
-    }
+    const safeFiles = Array.isArray(uploadedFiles) ? uploadedFiles : [];
 
     // Log the consultant selection for tracking
     await logConsultantSelection(consultant, name, projectType);
 
     // Build file links HTML
-    const fileLinksHtml = uploadedFiles.length > 0
-      ? uploadedFiles.map(f =>
+    const fileLinksHtml = safeFiles.length > 0
+      ? safeFiles.map(f =>
           `<li style="padding: 4px 0;">
             <a href="${f.url}" style="color: #6B7B5E;">${f.name}</a>
             <span style="color: #999; font-size: 12px;"> (${(f.size / 1024 / 1024).toFixed(1)} MB)</span>
@@ -234,7 +197,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      filesUploaded: uploadedFiles.length,
+      filesUploaded: safeFiles.length,
     });
   } catch (error) {
     console.error('Upload error:', error);
