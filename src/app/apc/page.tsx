@@ -1,59 +1,142 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useMemo } from 'react';
 import Link from 'next/link';
+import {
+  calculatePrice,
+  SERVICE_LABELS,
+  FREQUENCY_LABELS,
+  CONDITION_LABELS,
+  type ServiceType,
+  type Frequency,
+  type Condition,
+  type AddOns,
+  type PricingInput,
+} from '@/lib/apc-pricing';
 
-const serviceTypes = [
-  'Post-Construction Cleanup',
-  'Residential Cleaning',
-  'Commercial Cleaning',
-  'Move-In / Move-Out Clean',
-  'Deep Clean',
-  'Other',
-];
-
-const propertyTypes = [
-  'Single-Family Home',
-  'Apartment / Condo',
-  'Townhome / Duplex',
-  'Office / Retail',
-  'New Construction Site',
-  'Other',
-];
+// ─── Stepper Component ───
+function Stepper({
+  label,
+  value,
+  min,
+  max,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  onChange: (v: number) => void;
+}) {
+  return (
+    <div>
+      <label className="block text-sm font-medium text-brand-charcoal mb-2">{label}</label>
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={() => onChange(Math.max(min, value - 1))}
+          className="w-9 h-9 flex items-center justify-center border border-gray-200 text-brand-charcoal hover:bg-gray-50 transition-colors text-lg font-medium"
+        >
+          &minus;
+        </button>
+        <span className="w-8 text-center font-semibold text-brand-charcoal">{value}</span>
+        <button
+          type="button"
+          onClick={() => onChange(Math.min(max, value + 1))}
+          className="w-9 h-9 flex items-center justify-center border border-gray-200 text-brand-charcoal hover:bg-gray-50 transition-colors text-lg font-medium"
+        >
+          +
+        </button>
+      </div>
+    </div>
+  );
+}
 
 export default function APCPage() {
+  // Form state
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [location, setLocation] = useState('');
+  const [notes, setNotes] = useState('');
+
+  // Pricing state
+  const [serviceType, setServiceType] = useState<ServiceType>('standard');
+  const [sqft, setSqft] = useState(1500);
+  const [bedrooms, setBedrooms] = useState(3);
+  const [bathrooms, setBathrooms] = useState(2);
+  const [pets, setPets] = useState(0);
+  const [occupants, setOccupants] = useState(2);
+  const [condition, setCondition] = useState<Condition>(2);
+  const [frequency, setFrequency] = useState<Frequency>('biweekly');
+  const [addOns, setAddOns] = useState<AddOns>({
+    fridge: false,
+    oven: false,
+    laundry: false,
+    windows: 0,
+    garage: false,
+    cabinets: false,
+  });
+
+  // UI state
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState('');
-  const formRef = useRef<HTMLFormElement>(null);
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  // Calculate price in real-time
+  const pricingInput: PricingInput = useMemo(
+    () => ({
+      serviceType,
+      sqft,
+      bedrooms,
+      bathrooms,
+      pets,
+      occupants,
+      condition,
+      frequency,
+      addOns,
+    }),
+    [serviceType, sqft, bedrooms, bathrooms, pets, occupants, condition, frequency, addOns]
+  );
+
+  const pricing = useMemo(() => calculatePrice(pricingInput), [pricingInput]);
+
+  const toggleAddOn = (key: keyof Omit<AddOns, 'windows'>) => {
+    setAddOns((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const canSubmit = name && email && location && sqft > 0;
+
+  const handleSubmit = async () => {
     setSubmitting(true);
     setError('');
-
-    const form = e.currentTarget;
-    const data = {
-      name: (form.elements.namedItem('name') as HTMLInputElement).value,
-      email: (form.elements.namedItem('email') as HTMLInputElement).value,
-      phone: (form.elements.namedItem('phone') as HTMLInputElement).value,
-      serviceType: (form.elements.namedItem('serviceType') as HTMLSelectElement).value,
-      propertyType: (form.elements.namedItem('propertyType') as HTMLSelectElement).value,
-      squareFootage: (form.elements.namedItem('squareFootage') as HTMLInputElement).value,
-      location: (form.elements.namedItem('location') as HTMLInputElement).value,
-      details: (form.elements.namedItem('details') as HTMLTextAreaElement).value,
-    };
 
     try {
       const res = await fetch('/api/apc-quote', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
+        body: JSON.stringify({
+          // Contact
+          name,
+          email,
+          phone,
+          location,
+          notes,
+          // Pricing input (server recalculates)
+          serviceType,
+          sqft,
+          bedrooms,
+          bathrooms,
+          pets,
+          occupants,
+          condition,
+          frequency,
+          addOns,
+        }),
       });
       const result = await res.json();
       if (!res.ok) throw new Error(result.error || 'Submission failed');
       setSubmitted(true);
-      formRef.current?.reset();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
     } finally {
@@ -202,143 +285,409 @@ export default function APCPage() {
         </div>
       </section>
 
-      {/* ─── Quote Form ─── */}
+      {/* ─── Pricing Calculator ─── */}
       <section id="quote" className="section-padding bg-white">
-        <div className="container-wide grid grid-cols-1 lg:grid-cols-2 gap-16">
-          <div>
+        <div className="container-wide">
+          <div className="max-w-2xl mb-12">
             <span className="text-xs tracking-[0.25em] uppercase font-semibold text-brand-stone mb-4 block">
-              Get Started
+              Instant Pricing
             </span>
-            <h2 className="heading-lg mb-4">Request a Quote</h2>
-            <p className="body-md mb-8">
-              Fill out the form and we&apos;ll get back to you with a quote for your
-              cleaning project. No obligations, no pressure — just straightforward pricing.
+            <h2 className="heading-lg mb-4">Build Your Cleaning Quote</h2>
+            <p className="body-md">
+              Select your services, enter your property details, and see your price update in real time.
+              When you&apos;re ready, submit your order and we&apos;ll get it scheduled.
             </p>
+          </div>
 
-            <div className="space-y-6">
-              <div className="border border-gray-100 p-5">
-                <p className="text-sm font-medium text-brand-charcoal">Email</p>
-                <a href="mailto:jt@akers-development.com" className="text-brand-accent hover:underline text-sm">
-                  jt@akers-development.com
-                </a>
+          {submitted ? (
+            <div className="max-w-xl mx-auto bg-brand-cream p-12 text-center">
+              <svg className="w-16 h-16 text-brand-accent mx-auto mb-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <h2 className="heading-md mb-4">Booking Received!</h2>
+              <p className="body-md mb-2">
+                Your cleaning order for <strong>${pricing.total.toFixed(2)}</strong> has been submitted.
+              </p>
+              <p className="body-md mb-6 text-brand-stone">
+                We&apos;ll confirm your appointment shortly.
+              </p>
+              <button onClick={() => setSubmitted(false)} className="btn-secondary">
+                Book Another Cleaning
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+              {/* ─── Left: Form Inputs ─── */}
+              <div className="lg:col-span-2 space-y-10">
+
+                {/* 1. Service Type */}
+                <div>
+                  <h3 className="text-sm font-semibold text-brand-charcoal uppercase tracking-wide mb-4">
+                    1. Service Type
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    {(
+                      [
+                        { key: 'standard' as ServiceType, desc: 'Regular maintenance cleaning for homes and offices.' },
+                        { key: 'deep' as ServiceType, desc: 'Top-to-bottom thorough cleaning including hard-to-reach areas.' },
+                        { key: 'post-construction' as ServiceType, desc: 'Heavy-duty cleanup for new builds and renovations.' },
+                      ] as const
+                    ).map((s) => (
+                      <button
+                        key={s.key}
+                        type="button"
+                        onClick={() => setServiceType(s.key)}
+                        className={`p-5 border-2 text-left transition-all ${
+                          serviceType === s.key
+                            ? 'border-brand-accent bg-brand-accent/5'
+                            : 'border-gray-200 hover:border-gray-300'
+                        }`}
+                      >
+                        <p className="font-semibold text-brand-charcoal text-sm">{SERVICE_LABELS[s.key]}</p>
+                        <p className="text-xs text-brand-stone mt-1">{s.desc}</p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 2. Property Details */}
+                <div>
+                  <h3 className="text-sm font-semibold text-brand-charcoal uppercase tracking-wide mb-4">
+                    2. Property Details
+                  </h3>
+                  <div className="space-y-5">
+                    <div>
+                      <label className="block text-sm font-medium text-brand-charcoal mb-2">
+                        Square Footage <span className="text-red-500">*</span>
+                      </label>
+                      <input
+                        type="number"
+                        value={sqft || ''}
+                        onChange={(e) => setSqft(Math.max(0, parseInt(e.target.value) || 0))}
+                        className="input-field max-w-xs"
+                        placeholder="e.g. 2000"
+                        min={100}
+                        max={20000}
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-6">
+                      <Stepper label="Bedrooms" value={bedrooms} min={1} max={8} onChange={setBedrooms} />
+                      <Stepper label="Bathrooms" value={bathrooms} min={1} max={8} onChange={setBathrooms} />
+                      <Stepper label="Occupants" value={occupants} min={1} max={10} onChange={setOccupants} />
+                      <Stepper label="Pets" value={pets} min={0} max={6} onChange={setPets} />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-brand-charcoal mb-2">
+                        Property Condition
+                      </label>
+                      <div className="flex flex-wrap gap-2">
+                        {([1, 2, 3, 4, 5] as Condition[]).map((c) => (
+                          <button
+                            key={c}
+                            type="button"
+                            onClick={() => setCondition(c)}
+                            className={`px-4 py-2 text-xs border-2 transition-all ${
+                              condition === c
+                                ? 'border-brand-accent bg-brand-accent/5 font-semibold'
+                                : 'border-gray-200 hover:border-gray-300'
+                            }`}
+                          >
+                            {c} &mdash; {CONDITION_LABELS[c]}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3. Frequency */}
+                <div>
+                  <h3 className="text-sm font-semibold text-brand-charcoal uppercase tracking-wide mb-4">
+                    3. Frequency
+                  </h3>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    {(
+                      [
+                        { key: 'one-time' as Frequency, discount: null },
+                        { key: 'weekly' as Frequency, discount: '15% off' },
+                        { key: 'biweekly' as Frequency, discount: '10% off' },
+                        { key: 'monthly' as Frequency, discount: '5% off' },
+                      ] as const
+                    ).map((f) => (
+                      <button
+                        key={f.key}
+                        type="button"
+                        onClick={() => setFrequency(f.key)}
+                        className={`relative p-4 border-2 text-center transition-all ${
+                          frequency === f.key
+                            ? 'border-brand-accent bg-brand-accent/5'
+                            : 'border-gray-200 hover:border-gray-300'
+                        }`}
+                      >
+                        <p className="font-semibold text-sm text-brand-charcoal">{FREQUENCY_LABELS[f.key]}</p>
+                        {f.discount && (
+                          <span className="inline-block mt-1 text-xs text-brand-accent font-semibold">
+                            {f.discount}
+                          </span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 4. Add-Ons */}
+                <div>
+                  <h3 className="text-sm font-semibold text-brand-charcoal uppercase tracking-wide mb-4">
+                    4. Add-On Services
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                    {[
+                      { key: 'fridge' as const, label: 'Inside Fridge', price: '$35' },
+                      { key: 'oven' as const, label: 'Inside Oven', price: '$40' },
+                      { key: 'laundry' as const, label: 'Laundry (Wash/Dry/Fold)', price: '$30' },
+                      { key: 'garage' as const, label: 'Garage / Carport Sweep', price: '$25' },
+                      { key: 'cabinets' as const, label: 'Cabinet Interior Wipe-Down', price: '$50' },
+                    ].map((addon) => (
+                      <button
+                        key={addon.key}
+                        type="button"
+                        onClick={() => toggleAddOn(addon.key)}
+                        className={`flex items-center justify-between p-4 border-2 text-left transition-all ${
+                          addOns[addon.key]
+                            ? 'border-brand-accent bg-brand-accent/5'
+                            : 'border-gray-200 hover:border-gray-300'
+                        }`}
+                      >
+                        <div>
+                          <p className="text-sm font-medium text-brand-charcoal">{addon.label}</p>
+                          <p className="text-xs text-brand-stone mt-0.5">{addon.price}</p>
+                        </div>
+                        <div
+                          className={`w-5 h-5 border-2 flex items-center justify-center flex-shrink-0 ${
+                            addOns[addon.key]
+                              ? 'border-brand-accent bg-brand-accent'
+                              : 'border-gray-300'
+                          }`}
+                        >
+                          {addOns[addon.key] && (
+                            <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                            </svg>
+                          )}
+                        </div>
+                      </button>
+                    ))}
+
+                    {/* Windows — special: has count input */}
+                    <div
+                      className={`p-4 border-2 transition-all ${
+                        addOns.windows > 0
+                          ? 'border-brand-accent bg-brand-accent/5'
+                          : 'border-gray-200'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-brand-charcoal">Interior Windows</p>
+                          <p className="text-xs text-brand-stone mt-0.5">$5 / window</p>
+                        </div>
+                      </div>
+                      <div className="mt-3 flex items-center gap-2">
+                        <input
+                          type="number"
+                          min={0}
+                          max={50}
+                          value={addOns.windows || ''}
+                          onChange={(e) =>
+                            setAddOns((prev) => ({
+                              ...prev,
+                              windows: Math.max(0, Math.min(50, parseInt(e.target.value) || 0)),
+                            }))
+                          }
+                          className="input-field w-20 text-center"
+                          placeholder="0"
+                        />
+                        <span className="text-xs text-brand-stone">windows</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 5. Contact & Location */}
+                <div>
+                  <h3 className="text-sm font-semibold text-brand-charcoal uppercase tracking-wide mb-4">
+                    5. Your Information
+                  </h3>
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-brand-charcoal mb-1">
+                          Name <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={name}
+                          onChange={(e) => setName(e.target.value)}
+                          className="input-field"
+                          placeholder="Your full name"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-brand-charcoal mb-1">
+                          Email <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="email"
+                          value={email}
+                          onChange={(e) => setEmail(e.target.value)}
+                          className="input-field"
+                          placeholder="you@email.com"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-brand-charcoal mb-1">Phone</label>
+                        <input
+                          type="tel"
+                          value={phone}
+                          onChange={(e) => setPhone(e.target.value)}
+                          className="input-field"
+                          placeholder="(555) 123-4567"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-brand-charcoal mb-1">
+                          Location <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          value={location}
+                          onChange={(e) => setLocation(e.target.value)}
+                          className="input-field"
+                          placeholder="City, State"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-brand-charcoal mb-1">
+                        Additional Notes
+                      </label>
+                      <textarea
+                        value={notes}
+                        onChange={(e) => setNotes(e.target.value)}
+                        rows={3}
+                        className="input-field"
+                        placeholder="Gate codes, parking instructions, specific areas of focus, etc."
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Submit (mobile only — desktop uses the sticky sidebar) */}
+                <div className="lg:hidden">
+                  {error && (
+                    <div className="bg-red-50 border border-red-200 p-4 mb-4">
+                      <p className="text-sm text-red-600">{error}</p>
+                    </div>
+                  )}
+                  <button
+                    type="button"
+                    onClick={handleSubmit}
+                    disabled={submitting || !canSubmit}
+                    className="btn-primary w-full justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {submitting ? 'Submitting...' : `Book This Cleaning — $${pricing.total.toFixed(2)}`}
+                  </button>
+                </div>
               </div>
-              <div className="border border-gray-100 p-5">
-                <p className="text-sm font-medium text-brand-charcoal">Part of the Akers Family</p>
-                <p className="text-sm text-brand-stone mt-1">
-                  Akers Property Care is a division of Akers Development — the same
-                  team trusted to build and manage development projects across Mississippi.
-                </p>
-                <Link href="/" className="text-sm text-brand-accent hover:underline mt-2 inline-block">
-                  Learn about Akers Development &rarr;
-                </Link>
+
+              {/* ─── Right: Sticky Price Summary ─── */}
+              <div className="hidden lg:block">
+                <div className="sticky top-28">
+                  <div className="bg-brand-cream border border-gray-200 p-6">
+                    <h3 className="text-sm font-semibold text-brand-charcoal uppercase tracking-wide mb-4">
+                      Your Quote
+                    </h3>
+
+                    <div className="space-y-3 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-brand-stone">{SERVICE_LABELS[serviceType]}</span>
+                        <span className="font-medium">${pricing.basePrice.toFixed(2)}</span>
+                      </div>
+
+                      {pricing.adjusterTotal > 0 && (
+                        <div className="flex justify-between">
+                          <span className="text-brand-stone">Property adjustments</span>
+                          <span className="font-medium">+${pricing.adjusterTotal.toFixed(2)}</span>
+                        </div>
+                      )}
+
+                      {pricing.addOnTotal > 0 && (
+                        <div className="flex justify-between">
+                          <span className="text-brand-stone">Add-ons</span>
+                          <span className="font-medium">+${pricing.addOnTotal.toFixed(2)}</span>
+                        </div>
+                      )}
+
+                      {pricing.discountAmount > 0 && (
+                        <div className="flex justify-between text-brand-accent">
+                          <span>{FREQUENCY_LABELS[frequency]} discount</span>
+                          <span className="font-medium">-${pricing.discountAmount.toFixed(2)}</span>
+                        </div>
+                      )}
+
+                      <hr className="border-gray-300" />
+
+                      <div className="flex justify-between text-lg font-bold text-brand-charcoal">
+                        <span>Total per visit</span>
+                        <span>${pricing.total.toFixed(2)}</span>
+                      </div>
+
+                      <div className="flex justify-between text-xs text-brand-stone">
+                        <span>Estimated duration</span>
+                        <span>{pricing.estimatedHours.toFixed(1)} hours</span>
+                      </div>
+                    </div>
+
+                    <div className="mt-6">
+                      {error && (
+                        <div className="bg-red-50 border border-red-200 p-3 mb-3">
+                          <p className="text-xs text-red-600">{error}</p>
+                        </div>
+                      )}
+                      <button
+                        type="button"
+                        onClick={handleSubmit}
+                        disabled={submitting || !canSubmit}
+                        className="btn-primary w-full justify-center disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                      >
+                        {submitting ? 'Submitting...' : 'Book This Cleaning'}
+                      </button>
+                      {!canSubmit && (
+                        <p className="text-xs text-brand-stone mt-2 text-center">
+                          Fill in name, email, location &amp; square footage to continue.
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Breakdown toggle */}
+                    <details className="mt-4">
+                      <summary className="text-xs text-brand-stone cursor-pointer hover:text-brand-charcoal">
+                        View full breakdown
+                      </summary>
+                      <ul className="mt-2 space-y-1">
+                        {pricing.breakdown.map((line, i) => (
+                          <li key={i} className="text-xs text-brand-stone">{line}</li>
+                        ))}
+                      </ul>
+                    </details>
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
-
-          <div>
-            {submitted ? (
-              <div className="bg-brand-cream p-12 text-center">
-                <svg className="w-16 h-16 text-brand-accent mx-auto mb-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <h2 className="heading-md mb-4">Quote Request Received</h2>
-                <p className="body-md mb-6">
-                  Thank you for your interest. We&apos;ll review your request and get
-                  back to you with a quote shortly.
-                </p>
-                <button onClick={() => setSubmitted(false)} className="btn-secondary">
-                  Submit Another Request
-                </button>
-              </div>
-            ) : (
-              <form ref={formRef} onSubmit={handleSubmit} className="space-y-5">
-                {/* Contact */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label htmlFor="name" className="block text-sm font-medium text-brand-charcoal mb-1">
-                      Name <span className="text-red-500">*</span>
-                    </label>
-                    <input id="name" name="name" type="text" required className="input-field" placeholder="Your full name" />
-                  </div>
-                  <div>
-                    <label htmlFor="email" className="block text-sm font-medium text-brand-charcoal mb-1">
-                      Email <span className="text-red-500">*</span>
-                    </label>
-                    <input id="email" name="email" type="email" required className="input-field" placeholder="you@email.com" />
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label htmlFor="phone" className="block text-sm font-medium text-brand-charcoal mb-1">Phone</label>
-                    <input id="phone" name="phone" type="tel" className="input-field" placeholder="(555) 123-4567" />
-                  </div>
-                  <div>
-                    <label htmlFor="location" className="block text-sm font-medium text-brand-charcoal mb-1">
-                      Location <span className="text-red-500">*</span>
-                    </label>
-                    <input id="location" name="location" type="text" required className="input-field" placeholder="City, State" />
-                  </div>
-                </div>
-
-                {/* Service Details */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <label htmlFor="serviceType" className="block text-sm font-medium text-brand-charcoal mb-1">
-                      Service Type <span className="text-red-500">*</span>
-                    </label>
-                    <select id="serviceType" name="serviceType" required className="input-field">
-                      <option value="">Select service</option>
-                      {serviceTypes.map(s => <option key={s} value={s}>{s}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label htmlFor="propertyType" className="block text-sm font-medium text-brand-charcoal mb-1">
-                      Property Type
-                    </label>
-                    <select id="propertyType" name="propertyType" className="input-field">
-                      <option value="">Select type</option>
-                      {propertyTypes.map(p => <option key={p} value={p}>{p}</option>)}
-                    </select>
-                  </div>
-                </div>
-
-                <div>
-                  <label htmlFor="squareFootage" className="block text-sm font-medium text-brand-charcoal mb-1">
-                    Estimated Square Footage
-                  </label>
-                  <input id="squareFootage" name="squareFootage" type="text" className="input-field" placeholder="e.g. 2,400 sq ft" />
-                </div>
-
-                <div>
-                  <label htmlFor="details" className="block text-sm font-medium text-brand-charcoal mb-1">
-                    Additional Details
-                  </label>
-                  <textarea
-                    id="details"
-                    name="details"
-                    rows={4}
-                    className="input-field"
-                    placeholder="Tell us about the property, any specific requirements, preferred schedule, etc."
-                  />
-                </div>
-
-                {error && (
-                  <div className="bg-red-50 border border-red-200 p-4">
-                    <p className="text-sm text-red-600">{error}</p>
-                  </div>
-                )}
-
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="btn-primary w-full justify-center disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {submitting ? 'Submitting...' : 'Request a Quote'}
-                </button>
-              </form>
-            )}
-          </div>
+          )}
         </div>
       </section>
     </>
