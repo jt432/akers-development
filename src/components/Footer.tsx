@@ -92,6 +92,9 @@ export default function Footer() {
               >
                 Magnolia Granite
               </a>
+              <Link href="/apc" className="block text-gray-400 text-sm hover:text-white transition-colors">
+                Akers Property Care
+              </Link>
             </div>
           </div>
 
@@ -99,6 +102,9 @@ export default function Footer() {
           <div>
             <h4 className="text-white font-semibold tracking-wide uppercase text-sm mb-6">Contact</h4>
             <div className="space-y-3">
+              <a href="tel:+16016785384" className="block text-gray-400 text-sm hover:text-white transition-colors">
+                (601) 678-5384
+              </a>
               <a href="mailto:jt@akers-development.com" className="block text-gray-400 text-sm hover:text-white transition-colors">
                 jt@akers-development.com
               </a>

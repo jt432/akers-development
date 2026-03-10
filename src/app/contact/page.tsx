@@ -126,6 +126,12 @@ export default function ContactPage() {
               <h3 className="heading-sm mb-4">Contact Information</h3>
               <div className="space-y-4">
                 <div>
+                  <p className="text-sm font-medium text-brand-charcoal">Phone</p>
+                  <a href="tel:+16016785384" className="text-brand-accent hover:underline">
+                    (601) 678-5384
+                  </a>
+                </div>
+                <div>
                   <p className="text-sm font-medium text-brand-charcoal">Email</p>
                   <a href="mailto:jt@akers-development.com" className="text-brand-accent hover:underline">
                     jt@akers-development.com

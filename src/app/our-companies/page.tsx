@@ -180,6 +180,49 @@ export default function OurCompaniesPage() {
               }}
             />
           </div>
+          <hr className="border-brand-sand" />
+
+          {/* Akers Property Care */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+            <div
+              className="aspect-[4/3] bg-cover bg-center order-2 lg:order-1"
+              style={{
+                backgroundImage:
+                  "url('https://images.unsplash.com/photo-1581578731548-c64695cc6952?w=800&q=80')",
+              }}
+            />
+            <div className="order-1 lg:order-2">
+              <span className="text-xs tracking-widest uppercase text-brand-stone font-semibold">
+                Property Services
+              </span>
+              <h3 className="heading-lg mt-2 mb-4">Akers Property Care</h3>
+              <p className="body-md mb-4">
+                Akers Property Care provides professional cleaning services for residential,
+                commercial, and post-construction properties. From the final sweep on a new
+                build to ongoing maintenance, APC keeps your investment looking its best.
+              </p>
+              <p className="body-md mb-6">
+                Operating under the Akers Development umbrella, APC brings the same
+                attention to detail and professionalism that goes into building a
+                project to maintaining it.
+              </p>
+              <div className="flex flex-wrap gap-3 mb-6">
+                <span className="text-xs px-4 py-2 bg-brand-charcoal text-white tracking-wide">
+                  Post-Construction Cleanup
+                </span>
+                <span className="text-xs px-4 py-2 bg-brand-charcoal text-white tracking-wide">
+                  Residential Cleaning
+                </span>
+                <span className="text-xs px-4 py-2 bg-brand-charcoal text-white tracking-wide">
+                  Commercial Cleaning
+                </span>
+              </div>
+              <Link href="/apc" className="btn-secondary">
+                Get a Quote &rarr;
+              </Link>
+            </div>
+          </div>
+
         </div>
       </section>
 
@@ -193,7 +236,7 @@ export default function OurCompaniesPage() {
             align="center"
             light
           />
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mt-8">
             <div className="border border-white/10 p-8">
               <span className="text-brand-sand text-sm font-semibold tracking-widest uppercase">Phase 1</span>
               <h3 className="text-xl font-semibold text-white mt-3 mb-2">Akers Development</h3>
@@ -208,6 +251,11 @@ export default function OurCompaniesPage() {
               <span className="text-brand-sand text-sm font-semibold tracking-widest uppercase">Phase 3</span>
               <h3 className="text-xl font-semibold text-white mt-3 mb-2">Magnolia Granite</h3>
               <p className="text-gray-300 text-sm">Interior finishes and stone surfaces.</p>
+            </div>
+            <div className="border border-white/10 p-8">
+              <span className="text-brand-sand text-sm font-semibold tracking-widest uppercase">Phase 4</span>
+              <h3 className="text-xl font-semibold text-white mt-3 mb-2">Akers Property Care</h3>
+              <p className="text-gray-300 text-sm">Post-construction cleanup and property maintenance.</p>
             </div>
           </div>
         </div>
