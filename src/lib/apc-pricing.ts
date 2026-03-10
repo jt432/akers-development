@@ -41,9 +41,9 @@ export interface PricingResult {
 // --- Constants ---
 
 const BASE_RATES: Record<ServiceType, number> = {
-  standard: 0.15,
-  deep: 0.25,
-  'post-construction': 0.40,
+  standard: 0.05,
+  deep: 0.12,
+  'post-construction': 0.35,
 };
 
 const FREQUENCY_DISCOUNTS: Record<Frequency, number> = {
@@ -102,6 +102,44 @@ export const CONDITION_LABELS: Record<Condition, string> = {
   5: 'Needs Heavy Cleaning',
 };
 
+export const SERVICE_DESCRIPTIONS: Record<ServiceType, { tagline: string; includes: string[] }> = {
+  standard: {
+    tagline: 'Routine maintenance to keep your home fresh and tidy.',
+    includes: [
+      'Take out trash',
+      'Wash dishes',
+      'Sweep, vacuum & mop floors',
+      'Clean bathrooms (toilet, sink, tub/shower)',
+      'Make beds',
+      'Wipe down counters & surfaces',
+    ],
+  },
+  deep: {
+    tagline: 'Top-to-bottom detailed cleaning for a like-new feel.',
+    includes: [
+      'Everything in Standard Clean, plus:',
+      'Scrub baseboards & trim',
+      'Detail dust (ceiling fans, blinds, light fixtures)',
+      'Clean behind & under furniture',
+      'Scrub tile grout',
+      'Window sills & tracks',
+      'Door frames & switch plates',
+      'Interior of microwave',
+    ],
+  },
+  'post-construction': {
+    tagline: 'Heavy-duty cleanup so a new build or renovation is move-in ready.',
+    includes: [
+      'All dust & debris removal',
+      'Window & glass cleaning',
+      'Floor scrub & polish',
+      'Full fixture cleaning',
+      'Cabinet & closet wipe-down',
+      'Final detail & touch-up',
+    ],
+  },
+};
+
 // --- Calculator ---
 
 export function calculatePrice(input: PricingInput): PricingResult {
@@ -118,7 +156,7 @@ export function calculatePrice(input: PricingInput): PricingResult {
   // Bedrooms above 2
   const extraBeds = Math.max(0, input.bedrooms - 2);
   if (extraBeds > 0) {
-    const bedAdj = round(0.01 * input.sqft * extraBeds);
+    const bedAdj = round(0.004 * input.sqft * extraBeds);
     adjusterTotal += bedAdj;
     breakdown.push(`Extra bedrooms (${extraBeds}): +$${bedAdj.toFixed(2)}`);
   }
@@ -126,14 +164,14 @@ export function calculatePrice(input: PricingInput): PricingResult {
   // Bathrooms above 1
   const extraBaths = Math.max(0, input.bathrooms - 1);
   if (extraBaths > 0) {
-    const bathAdj = round(0.015 * input.sqft * extraBaths);
+    const bathAdj = round(0.006 * input.sqft * extraBaths);
     adjusterTotal += bathAdj;
     breakdown.push(`Extra bathrooms (${extraBaths}): +$${bathAdj.toFixed(2)}`);
   }
 
   // Pets
   if (input.pets > 0) {
-    const petAdj = round(0.02 * input.sqft * input.pets);
+    const petAdj = round(0.008 * input.sqft * input.pets);
     adjusterTotal += petAdj;
     breakdown.push(`Pets (${input.pets}): +$${petAdj.toFixed(2)}`);
   }
@@ -141,7 +179,7 @@ export function calculatePrice(input: PricingInput): PricingResult {
   // Occupants above 2
   const extraOccupants = Math.max(0, input.occupants - 2);
   if (extraOccupants > 0) {
-    const occAdj = round(0.005 * input.sqft * extraOccupants);
+    const occAdj = round(0.002 * input.sqft * extraOccupants);
     adjusterTotal += occAdj;
     breakdown.push(`Extra occupants (${extraOccupants}): +$${occAdj.toFixed(2)}`);
   }

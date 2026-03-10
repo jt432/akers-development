@@ -5,6 +5,7 @@ import Link from 'next/link';
 import {
   calculatePrice,
   SERVICE_LABELS,
+  SERVICE_DESCRIPTIONS,
   FREQUENCY_LABELS,
   CONDITION_LABELS,
   type ServiceType,
@@ -327,27 +328,36 @@ export default function APCPage() {
                     1. Service Type
                   </h3>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    {(
-                      [
-                        { key: 'standard' as ServiceType, desc: 'Regular maintenance cleaning for homes and offices.' },
-                        { key: 'deep' as ServiceType, desc: 'Top-to-bottom thorough cleaning including hard-to-reach areas.' },
-                        { key: 'post-construction' as ServiceType, desc: 'Heavy-duty cleanup for new builds and renovations.' },
-                      ] as const
-                    ).map((s) => (
+                    {((['standard', 'deep', 'post-construction'] as ServiceType[]).map((key) => (
                       <button
-                        key={s.key}
+                        key={key}
                         type="button"
-                        onClick={() => setServiceType(s.key)}
+                        onClick={() => setServiceType(key)}
                         className={`p-5 border-2 text-left transition-all ${
-                          serviceType === s.key
+                          serviceType === key
                             ? 'border-brand-accent bg-brand-accent/5'
                             : 'border-gray-200 hover:border-gray-300'
                         }`}
                       >
-                        <p className="font-semibold text-brand-charcoal text-sm">{SERVICE_LABELS[s.key]}</p>
-                        <p className="text-xs text-brand-stone mt-1">{s.desc}</p>
+                        <p className="font-semibold text-brand-charcoal text-sm">{SERVICE_LABELS[key]}</p>
+                        <p className="text-xs text-brand-stone mt-1">{SERVICE_DESCRIPTIONS[key].tagline}</p>
                       </button>
-                    ))}
+                    )))}
+                  </div>
+
+                  {/* What's included in this service */}
+                  <div className="mt-4 bg-gray-50 border border-gray-200 p-5">
+                    <p className="text-xs font-semibold text-brand-charcoal uppercase tracking-wide mb-3">
+                      {SERVICE_LABELS[serviceType]} Includes:
+                    </p>
+                    <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5">
+                      {SERVICE_DESCRIPTIONS[serviceType].includes.map((item) => (
+                        <li key={item} className="flex items-start gap-2 text-sm text-brand-stone">
+                          <span className="text-brand-accent mt-0.5">&#10003;</span>
+                          {item}
+                        </li>
+                      ))}
+                    </ul>
                   </div>
                 </div>
 
