@@ -209,7 +209,7 @@ export default function HomePage() {
             description="Akers Development operates within a broader business ecosystem that supports projects from planning through construction and interior finishes."
           />
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
             {[
               {
                 name: 'Akers Development',
@@ -229,6 +229,12 @@ export default function HomePage() {
                 link: 'https://magnoliagranitems.com',
                 linkLabel: 'magnoliagranitems.com',
               },
+              {
+                name: 'Akers Property Care',
+                role: 'Residential cleaning, commercial cleaning, and post-construction cleanup services.',
+                link: '/apc',
+                linkLabel: 'Get a Quote',
+              },
             ].map((co) => (
               <div key={co.name} className="card">
                 <h3 className="heading-sm mb-3">{co.name}</h3>
@@ -243,10 +249,59 @@ export default function HomePage() {
                     {co.linkLabel} &rarr;
                   </a>
                 ) : (
-                  <span className="text-sm text-brand-stone font-medium">{co.linkLabel}</span>
+                  <Link
+                    href={co.link}
+                    className="text-sm text-brand-accent font-medium hover:underline"
+                  >
+                    {co.linkLabel === 'You\'re Here' ? co.linkLabel : `${co.linkLabel} \u2192`}
+                  </Link>
                 )}
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ─── Akers Property Care CTA ─── */}
+      <section className="section-padding bg-brand-dark">
+        <div className="container-narrow">
+          <div className="flex flex-col lg:flex-row items-center gap-10 lg:gap-16">
+            <div className="flex-1">
+              <span className="inline-block text-xs tracking-[0.25em] uppercase font-semibold text-brand-sand mb-4">
+                Akers Property Care
+              </span>
+              <h2 className="heading-lg text-white mb-4">
+                Building It Is Only Half the Job
+              </h2>
+              <p className="text-gray-300 leading-relaxed mb-2">
+                From post-construction cleanup to ongoing residential and commercial cleaning,
+                Akers Property Care keeps your investment looking its best. Professional service
+                from the same team you trust to build it.
+              </p>
+              <ul className="text-gray-400 text-sm space-y-2 mt-4 mb-8">
+                <li className="flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 bg-brand-sand rounded-full" />
+                  Post-Construction Cleanup
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 bg-brand-sand rounded-full" />
+                  Residential Cleaning
+                </li>
+                <li className="flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 bg-brand-sand rounded-full" />
+                  Commercial Cleaning
+                </li>
+              </ul>
+              <Link href="/apc" className="btn-accent">
+                Get a Quote from Akers Property Care
+              </Link>
+            </div>
+            <div className="flex-shrink-0 hidden lg:flex items-center justify-center w-48 h-48 border-2 border-white/10 rounded-full">
+              <div className="text-center">
+                <span className="block font-serif text-white text-2xl tracking-[0.15em]">APC</span>
+                <span className="block font-serif text-brand-sand text-[10px] tracking-[0.25em] mt-1">PROPERTY CARE</span>
+              </div>
+            </div>
           </div>
         </div>
       </section>
